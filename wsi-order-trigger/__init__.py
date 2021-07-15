@@ -39,10 +39,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         cnx.close()
         logging.info("Connection to database closed")
 
+        return func.HttpResponse(f"The file {file.filename} has uploaded successfully")
     except Exception as e:
         logging.info(e.args)
-
-    return func.HttpResponse(f"The file {file.filename} has uploaded successfully")
 
 
 def add_sku_names(orders, requester):
