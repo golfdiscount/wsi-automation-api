@@ -19,7 +19,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                                     database=config["mysql"]["database"])
         cursor = cnx.cursor()
 
-        logging.info("ShipStation API requester initializing...\n")
+        logging.info("")
+        logging.info("ShipStation API requester initializing...")
+        logging.info("")
         requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
         requester.encode_base64("3b72e28b4eb547ab976cc0ac8b1a0662", "fe2bbc64d7de426c8c298b4107dac60a")
 
@@ -91,6 +93,8 @@ def upload_to_api(cursor, orders):
     """
     for ticket in orders:
         header = orders[ticket]["header"]
+        logging.info(f"Uploading order {header.get_pick_num()}")
+        logging.info("")
         upload_header(cursor, header)
 
         for detail in orders[ticket]["details"]:
