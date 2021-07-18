@@ -27,7 +27,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         pick_ticket = Pickticket(file)
 
         orders = pick_ticket.get_orders()
-        # orders = add_sku_names(orders, requester)
 
         upload_to_api(cursor, orders, requester)
 
@@ -35,6 +34,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         cnx.commit()
         logging.info("Data commited")
         logging.info("Closing connection to database...")
+        cnx.close()
 
     except Exception as e:
         logging.info(e.args)
