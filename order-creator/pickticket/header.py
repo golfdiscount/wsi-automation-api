@@ -10,11 +10,11 @@ get_header() -> dict
 get_cus_info() -> dict
 get_rec_info(0 -> dict
 """
+import pandas
 
 
-# noinspection SpellCheckingInspection
-class PickticketH:
-    # Unique pick ticket id for internal tracking
+class Header:
+    # These indices are used for reading from a CSV file
     _indices = {
         "pick_ticket_num": 2,
         "order_num": 3,
@@ -34,16 +34,51 @@ class PickticketH:
         "ship_method": 32
     }
 
-    def __init__(self, record):
-        """
-        Instantiate a pick ticket header object
-
-        @type record: A pandas Series
-        @param record: The record that contains pick ticket header information
-        @raise ValueError: Record is not a pick ticket header
-        """
+    def __init__(self):
+        """Instantiate a pick ticket header with empty data"""
         self._info = {}
 
+    def read_dict(self, record: dict):
+        """
+        Populates header data using a dict
+
+        @type record: dict
+        @param record: Header data including order number, shipping info, etc.
+        @raise TypeError: Record passed in is not of type dict
+        @raise: KeyError: A key in the passed in record is named incorrectly
+        """
+        if type(record) != dict:
+            raise TypeError("The passed record must be a dict")
+
+        for key in record:
+            if key not in self._indices.keys():
+                raise KeyError(f"Error: {key} is not a valid key")
+
+        self._info = record
+        self._norm_sold_add()
+        self._norm_ship_add()
+
+    def _norm_sold_add(self):
+        """Wraps customer's address in quotes to avoid extraneous commas"""
+
+        self._info["sold_to_name"] = f'"{self._info["sold_to_name"]}"'
+        self._info["sold_to_address"] = f'"{self._info["sold_to_address"]}"'
+        self._info["sold_to_city"] = f'"{self._info["sold_to_city"]}"'
+
+    def _norm_ship_add(self):
+        """Wraps customer's address in quotes to avoid extraneous commas"""
+
+        self._info["ship_to_name"] = f'"{self._info["ship_to_name"]}"'
+        self._info["ship_to_address"] = f'"{self._info["ship_to_address"]}"'
+        self._info["ship_to_city"] = f'"{self._info["ship_to_city"]}"'
+
+    def read_csv(self, record: pandas.Series):
+        """
+        Populates header data using a CSV record
+
+        @type record: pandas series
+        @param record: CSV record containing header details
+        """
         if record[0] != "PTH":
             raise ValueError("This passed record was not a pick ticket header")
 
@@ -114,11 +149,23 @@ class PickticketH:
             "ship_to_zip": self._info["ship_to_zip"]
         }
 
-    def __repr__(self):
-        """
-        Returns a string for interneal representation
+    def __str__(self):
+        header = [""]*62
+        header[0] = 'PTH'
+        header[1] = 'I'
+        header[4] = 'C'
 
-        @rtype: String
-        @return: String describing the header object
-        """
-        return str(self.get_order_info())
+        header[9] = "75"
+
+        header[35] = 'PGD'
+        header[37] = 'HN'
+        header[38] = 'PGD'
+        header[39] = 'PP'
+
+        header[45] = 'Y'
+        header[49] = "PT"
+
+        for index in self._indices:
+            header[self._indices[index]] = self._info[index]
+
+        return ",".join([str(entry) for entry in header])
