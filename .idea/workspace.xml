@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0e3ee8e8-1d7d-40b5-b737-2d91dfc117be" name="Default Changelist" comment="Moved unreachable return statement">
-      <change beforePath="$PROJECT_DIR$/wsi-order-trigger/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/wsi-order-trigger/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-creator/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/order-creator/__init__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
