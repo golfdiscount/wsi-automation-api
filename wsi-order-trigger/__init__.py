@@ -4,7 +4,7 @@ import azure.functions as func
 from . import wsi
 from .config import config
 from .Requests import Requester
-from .ticket.Pickticket import Pickticket
+from .pickticket.pickticket import Ticket
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -12,6 +12,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         file = req.files.get('file')
+
+        if file is None:
+            return func.HttpResponse("Please provide a file to upload", status_code=400)
 
         cnx = mysql.connector.connect(user=config["mysql"]["user"],
                                     password=config["mysql"]["pass"],
@@ -25,7 +28,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
         requester.encode_base64("3b72e28b4eb547ab976cc0ac8b1a0662", "fe2bbc64d7de426c8c298b4107dac60a")
 
-        pick_ticket = Pickticket(file)
+        pick_ticket = Ticket()
+        pick_ticket.read_csv(file)
 
         orders = pick_ticket.get_orders()
         orders = add_sku_names(orders, requester)
@@ -41,7 +45,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
         return func.HttpResponse(f"The file {file.filename} has uploaded successfully")
     except Exception as e:
-        logging.info(e.args)
+        return func.HttpResponse(f"There was an error uploading the file\n{str(e)}", status_code=500)
 
 
 def add_sku_names(orders, requester):
