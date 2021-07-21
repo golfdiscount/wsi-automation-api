@@ -10,6 +10,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         header = createHeader(req)
         detail = createDetail(req)
     except Exception as e:
+        logging.warning(f"There was an error creating the ticket: {e}")
         return func.HttpResponse(f"There was an error creating the ticket\n{e}", status_code=500)
 
     ticket = Ticket()
@@ -17,10 +18,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     with open(f"{header['order_num']}.csv", 'w+') as f:
         f.writelines(str(ticket))
-        bytes(f)
-        return func.HttpResponse(f.read(), mimetype='text/plain', status_code=200)
+        
+    with open(f"{header['order_num']}.csv", 'r') as f:
+        logging.info(f"Order {header['order_num']} has been created")
+        return func.HttpResponse(f.read(), status_code=200)
 
-def createHeader(req: func.HttpResponse) -> dict:
+def createHeader(req: func.HttpRequest) -> dict:
     header = {}
 
     header["pick_ticket_num"] = f"C{req.form['order_num']}"
@@ -46,7 +49,7 @@ def createHeader(req: func.HttpResponse) -> dict:
 
     return header
 
-def createDetail(req: func.HttpResponse) -> dict:
+def createDetail(req: func.HttpRequest) -> dict:
     detail = {}
 
     detail["pick_ticket_num"] = f"C{req.form['order_num']}"
