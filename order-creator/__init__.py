@@ -15,13 +15,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     ticket = Ticket()
     ticket.create_ticket(header, detail)
-
-    with open(f"{header['order_num']}.csv", 'w+') as f:
-        f.writelines(str(ticket))
         
-    with open(f"{header['order_num']}.csv", 'r') as f:
-        logging.info(f"Order {header['order_num']} has been created")
-        return func.HttpResponse(f.read(), status_code=200)
+    return func.HttpResponse(str(ticket), status_code=200)
 
 def createHeader(req: func.HttpRequest) -> dict:
     header = {}
