@@ -18,10 +18,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     with open(f"{header['order_num']}.csv", 'w+') as f:
         f.writelines(str(ticket))
-        bytes(f)
-        return func.HttpResponse(f.read(), mimetype='text/plain', status_code=200)
+        
+    with open(f"{header['order_num']}.csv", 'r') as f:
+        return func.HttpResponse(f.read(), status_code=200)
 
-def createHeader(req: func.HttpResponse) -> dict:
+def createHeader(req: func.HttpRequest) -> dict:
     header = {}
 
     header["pick_ticket_num"] = f"C{req.form['order_num']}"
@@ -47,7 +48,7 @@ def createHeader(req: func.HttpResponse) -> dict:
 
     return header
 
-def createDetail(req: func.HttpResponse) -> dict:
+def createDetail(req: func.HttpRequest) -> dict:
     detail = {}
 
     detail["pick_ticket_num"] = f"C{req.form['order_num']}"
