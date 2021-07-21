@@ -1,4 +1,5 @@
 import logging
+import tempfile
 import azure.functions as func
 from .pickticket.pickticket import Ticket
 
@@ -15,8 +16,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     ticket = Ticket()
     ticket.create_ticket(header, detail)
+
+    temp_file_path = tempfile.gettempdir()
+    temp = tempfile.NamedTemporaryFile()
+    temp.write(bytes(str(ticket), "utf-8"))
         
-    return func.HttpResponse(str(ticket), status_code=200)
+    return func.HttpResponse(bytes(str(ticket), "utf-8"), status_code=200)
 
 def createHeader(req: func.HttpRequest) -> dict:
     header = {}
