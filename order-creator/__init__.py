@@ -21,7 +21,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     temp = tempfile.NamedTemporaryFile()
     temp.write(bytes(str(ticket), "utf-8"))
         
-    return func.HttpResponse(bytes(str(ticket), "utf-8"), status_code=200)
+    return func.HttpResponse(bytes(str(ticket), "utf-8"), status_code=200, mimetype="text/plain")
 
 def createHeader(req: func.HttpRequest) -> dict:
     header = {}
