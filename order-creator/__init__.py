@@ -10,6 +10,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         header = createHeader(req)
         detail = createDetail(req)
     except Exception as e:
+        logging.warning(f"There was an error creating the ticket: {e}")
         return func.HttpResponse(f"There was an error creating the ticket\n{e}", status_code=500)
 
     ticket = Ticket()
