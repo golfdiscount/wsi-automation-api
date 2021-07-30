@@ -17,10 +17,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     ticket = Ticket()
     ticket.create_ticket(header, detail)
 
-    temp_file_path = tempfile.gettempdir()
-    temp = tempfile.NamedTemporaryFile()
-    temp.write(bytes(str(ticket), "utf-8"))
-
+    logging.info(f"Order {header['order_num']} successfully created")
     return func.HttpResponse(bytes(str(ticket), "utf-8"), status_code=200, mimetype="text/plain")
 
 def createHeader(req: func.HttpRequest) -> dict:
@@ -39,7 +36,7 @@ def createHeader(req: func.HttpRequest) -> dict:
     header["sold_to_zip"] = req.form["sold_to_zip"]
 
     # Recipient information
-    if req.form["storeNum"] == 1:
+    if req.form["storeNum"] == "1":
         header["ship_to_name"] = req.form["sold_to_name"]
         header["ship_to_address"] =req.form["sold_to_address"]
         header["ship_to_city"] = req.form["sold_to_city"]
