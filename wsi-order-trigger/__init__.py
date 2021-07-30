@@ -22,9 +22,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                                     database=config["mysql"]["database"])
         cursor = cnx.cursor()
 
-        logging.info("")
         logging.info("ShipStation API requester initializing...")
-        logging.info("")
+
         requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
         requester.encode_base64("3b72e28b4eb547ab976cc0ac8b1a0662", "fe2bbc64d7de426c8c298b4107dac60a")
 
@@ -32,20 +31,19 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         pick_ticket.read_csv(file)
 
         orders = pick_ticket.get_orders()
-        orders = add_sku_names(orders, requester)
 
-        upload_to_api(cursor, orders)
+        upload_to_api(cursor, orders, requester)
 
         logging.info("Committing data to database...")
         cnx.commit()
         logging.info("Data commited")
         logging.info("Closing connection to database...")
         cnx.close()
-        logging.info("Connection to database closed")
 
-        return func.HttpResponse(f"The file {file.filename} has uploaded successfully")
     except Exception as e:
         return func.HttpResponse(f"There was an error uploading the file\n{str(e)}", status_code=500)
+
+    return func.HttpResponse(f"The file {file.filename} has uploaded successfully")
 
 
 def add_sku_names(orders, requester):
@@ -85,7 +83,7 @@ def get_sku_name(response, target):
     return None
 
 
-def upload_to_api(cursor, orders):
+def upload_to_api(cursor, orders, requester):
     """
     Breaks down a header and a detail for each order and inserts them into the database
 
@@ -101,7 +99,7 @@ def upload_to_api(cursor, orders):
         upload_header(cursor, header)
 
         for detail in orders[ticket]["details"]:
-            upload_detail(cursor, orders[ticket]["details"][detail])
+            upload_detail(cursor, orders[ticket]["details"][detail], requester)
 
 
 def upload_header(cursor, header):
@@ -131,7 +129,7 @@ def upload_header(cursor, header):
     })
 
 
-def upload_detail(cursor, detail):
+def upload_detail(cursor, detail, requester):
     """
     Uploads information from a detail record to the WSI API
 
@@ -140,6 +138,8 @@ def upload_detail(cursor, detail):
     @type detail: A pick ticket detail object
     @param detail: Detail record to be uploaded
     """
+    sku = detail.get_sku()
+    detail.set_sku_name(get_sku_name(requester.get("/products", {"sku": sku}), sku))
     detail = detail.get_pick_details()
     # Add product
     wsi.add_product(cursor, {

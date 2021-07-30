@@ -1,4 +1,5 @@
 import logging
+import tempfile
 import azure.functions as func
 from .pickticket.pickticket import Ticket
 
@@ -10,17 +11,19 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         header = createHeader(req)
         detail = createDetail(req)
     except Exception as e:
+        logging.warning(f"There was an error creating the ticket: {e}")
         return func.HttpResponse(f"There was an error creating the ticket\n{e}", status_code=500)
 
     ticket = Ticket()
     ticket.create_ticket(header, detail)
 
-    with open(f"{header['order_num']}.csv", 'w+') as f:
-        f.writelines(str(ticket))
-        bytes(f)
-        return func.HttpResponse(f.read(), mimetype='text/plain', status_code=200)
+    temp_file_path = tempfile.gettempdir()
+    temp = tempfile.NamedTemporaryFile()
+    temp.write(bytes(str(ticket), "utf-8"))
 
-def createHeader(req: func.HttpResponse) -> dict:
+    return func.HttpResponse(bytes(str(ticket), "utf-8"), status_code=200, mimetype="text/plain")
+
+def createHeader(req: func.HttpRequest) -> dict:
     header = {}
 
     header["pick_ticket_num"] = f"C{req.form['order_num']}"
@@ -55,7 +58,7 @@ def createHeader(req: func.HttpResponse) -> dict:
 
     return header
 
-def createDetail(req: func.HttpResponse) -> dict:
+def createDetail(req: func.HttpRequest) -> dict:
     detail = {}
 
     detail["pick_ticket_num"] = f"C{req.form['order_num']}"
