@@ -36,7 +36,7 @@ def createHeader(req: func.HttpRequest) -> dict:
     header["sold_to_zip"] = req.form["sold_to_zip"]
 
     # Recipient information
-    if req.form["storeNum"] == "1":
+    if "ship_to_name" not in req.form.keys():
         header["ship_to_name"] = req.form["sold_to_name"]
         header["ship_to_address"] =req.form["sold_to_address"]
         header["ship_to_city"] = req.form["sold_to_city"]
