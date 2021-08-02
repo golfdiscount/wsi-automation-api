@@ -5,6 +5,7 @@ from . import wsi
 from .config import config
 from .Requests import Requester
 from .pickticket.pickticket import Ticket
+from io import StringIO
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -22,17 +23,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500)
 
-    
     file = req.files.get('file')
 
     if file is not None:
         upload_file(cursor, file, requester)
     else:
-        json = req.get_json()
-        try:
-            upload_json(cursor, json, requester)
-        except KeyError as e:
-            return func.HttpResponse(f"The JSON request is malformed\n{e}", status_code=400)
+        body = req.get_body()
+        body = bytes.decode(body)
+        upload_file(cursor, StringIO(body), requester)
 
     logging.info("Committing data to database...")
     cnx.commit()
@@ -42,62 +40,23 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(f"The order(s) have uploaded successfully.")
 
-def upload_file(cursor: mysql.connector.connection, file, requester: Requester) -> None:
+def upload_file(cursor: mysql.connector.connection, orders, requester: Requester) -> None:
+    """
+    Uploads a file containing WSI orders to the WSI database
+    
+    @type cursor: mysql.connector.connection
+    @param cursor: Connection to the WSI orders database
+    @type orders: file or str
+    @param orders: The WSI orders to be uploaded
+    @type requester: Requester
+    @param requester: Object to make requests to the ShipStation API"""
+
     pick_ticket = Ticket()
-    pick_ticket.read_csv(file)
+    pick_ticket.read_csv(orders)
 
     orders = pick_ticket.get_orders()
 
     _upload_to_api(cursor, orders, requester)
-
-
-def upload_json(cursor: mysql.connector.connection, json: dict, requester: Requester) -> None:
-    """
-    Uploads an order in JSON format to the WSI DB
-    
-    @type cursor: mysql.connector.connection
-    @param cursor: Connection to the WSI database
-    @type json: dict
-    @param json: JSON data containing order information
-    @type requester: Requester object
-    @param requester: Connection to ShipStation API
-    """
-    logging.info(f"Uploading order {json['order_num']}")
-
-    # Add customer information
-    sold_to_id = wsi.add_cus(cursor, json)
-
-    # Add recipient information
-    ship_to_id = wsi.add_rec(cursor, json)
-
-    # Add order information
-    wsi.add_order(cursor, {
-        "pick_ticket_num": json["pick_ticket_num"],
-        "order_num": json["order_num"],
-        "sold_to": sold_to_id,
-        "ship_to": ship_to_id,
-        "ship_method": json["ship_method"],
-        "order_date": json["order_date"]
-    })
-
-    sku = json["sku"]
-    json["sku_name"] = _get_sku_name(requester.get("/products", {"sku": sku}), sku)
-
-    # Add product
-    wsi.add_product(cursor, {
-        "sku": json["sku"],
-        "sku_name": json["sku_name"],
-        "unit_price": json["unit_price"]
-    })
-
-    # Add line item
-    wsi.add_lt(cursor, {
-        "pick_ticket_num": json["pick_ticket_num"],
-        "line_num": json["line_num"],
-        "units_to_ship": json["units_to_ship"],
-        "sku": json["sku"],
-        "quantity": json["quantity"]
-    })
 
 
 def _upload_to_api(cursor, orders, requester):

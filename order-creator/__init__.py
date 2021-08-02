@@ -18,7 +18,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     ticket.create_ticket(header, detail)
 
     logging.info(f"Order {header['order_num']} successfully created")
-    return func.HttpResponse(bytes(str(ticket), "utf-8"), status_code=200, mimetype="text/plain")
+    return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain")
 
 def createHeader(req: func.HttpRequest) -> dict:
     header = {}
