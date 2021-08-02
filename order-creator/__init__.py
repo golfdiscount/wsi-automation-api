@@ -1,12 +1,10 @@
 import logging
-import tempfile
+import requests
 import azure.functions as func
 from .pickticket.pickticket import Ticket
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
-
     try:
         header = createHeader(req)
         detail = createDetail(req)
@@ -18,6 +16,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     ticket.create_ticket(header, detail)
 
     logging.info(f"Order {header['order_num']} successfully created")
+    logging.info(f"Attempting to upload order {header['order_num']} now...")
+
+    try:
+        res = requests.post('https://wsi-staging.azurewebsites.net/api/wsi-order-trigger', data=bytes(str(ticket), "utf-8"))
+
+        if res.status_code != 200:
+            res.raise_for_status()
+
+        logging.info(f"Successfully uploaded order {header['order_num']} to the database")
+    except Exception as e:
+        return func.HttpResponse(f"There was an error uploading the order to the database\n{e}", status_code=500)
+
     return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain")
 
 def createHeader(req: func.HttpRequest) -> dict:
