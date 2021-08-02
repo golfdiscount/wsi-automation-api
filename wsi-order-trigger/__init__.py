@@ -1,6 +1,10 @@
 import logging
 import mysql.connector
 import azure.functions as func
+import paramiko as pm
+from paramiko import sftp
+from paramiko.client import AutoAddPolicy
+from paramiko.sftp_client import SFTPClient
 from . import wsi
 from .config import config
 from .Requests import Requester
@@ -21,16 +25,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
         requester.encode_base64("3b72e28b4eb547ab976cc0ac8b1a0662", "fe2bbc64d7de426c8c298b4107dac60a")
     except Exception as e:
+        logging.error(f"There was an error connecting to either the database or ShipStation\n{str(e)}")
         return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500)
 
     file = req.files.get('file')
 
     if file is not None:
-        upload_file(cursor, file, requester)
+        pass
+        pick_ticket = upload_file(cursor, file, requester)
     else:
         body = req.get_body()
         body = bytes.decode(body)
-        upload_file(cursor, StringIO(body), requester)
+        pick_ticket = upload_file(cursor, StringIO(body), requester)
 
     logging.info("Committing data to database...")
     cnx.commit()
@@ -38,9 +44,25 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("Closing connection to database...")
     cnx.close()
 
+    logging.info("Initiating SFTP to WSI...")
+
+    host = "transfer.warehouseservices.com"
+    user = "ProGolfDiscount"
+    password = "KbFi*5I#a1S!vu2j"
+    if file is not None:
+        sftp_target = file
+    else:
+        sftp_target = StringIO(body)
+
+    try:
+        # TODO Fix file name
+        upload_sftp(host, user, password, sftp_target, f"{pick_ticket.get}")
+    except Exception as e:
+        return func.HttpResponse(f"There was an error uploading the order(s) to WSI\n{e}", status_code=500)
+
     return func.HttpResponse(f"The order(s) have uploaded successfully.")
 
-def upload_file(cursor: mysql.connector.connection, orders, requester: Requester) -> None:
+def upload_file(cursor: mysql.connector.connection, orders, requester: Requester) -> Ticket():
     """
     Uploads a file containing WSI orders to the WSI database
     
@@ -57,6 +79,33 @@ def upload_file(cursor: mysql.connector.connection, orders, requester: Requester
     orders = pick_ticket.get_orders()
 
     _upload_to_api(cursor, orders, requester)
+
+    return pick_ticket
+
+
+def upload_sftp(host: str, user: str, password: str, file, file_name: str):
+    """
+    Uploads the file to the specified SFTP connection
+
+    @type host: str
+    @param: Hostname to be connected to
+    @type user: str
+    @param: User to connect with
+    @type password: str
+    @param password: Password for the connection
+    @type file: File object
+    @param file: File to be uploaded
+    """
+    client = pm.SSHClient()
+    client.set_missing_host_key_policy(AutoAddPolicy())
+    client.connect(host, username=user, password=password)
+
+    transport = client.get_transport()
+
+    sftp = SFTPClient.from_transport(transport)
+    sftp.putfo(file, f"/Outbound/{file_name}.csv")
+
+    client.close()
 
 
 def _upload_to_api(cursor, orders, requester):
