@@ -2,7 +2,7 @@ import logging
 import mysql.connector
 import azure.functions as func
 import paramiko as pm
-from paramiko import sftp
+import datetime
 from paramiko.client import AutoAddPolicy
 from paramiko.sftp_client import SFTPClient
 from . import wsi
@@ -29,14 +29,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500)
 
     file = req.files.get('file')
+    
 
     if file is not None:
-        pass
-        pick_ticket = upload_file(cursor, file, requester)
+        upload_file(cursor, file, requester)
     else:
         body = req.get_body()
         body = bytes.decode(body)
-        pick_ticket = upload_file(cursor, StringIO(body), requester)
+        upload_file(cursor, StringIO(body), requester)
 
     logging.info("Committing data to database...")
     cnx.commit()
@@ -55,20 +55,23 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         sftp_target = StringIO(body)
 
     try:
-        # TODO Fix file name
-        upload_sftp(host, user, password, sftp_target, f"{pick_ticket.get}")
+        now = datetime.datetime.now()
+        date_string = now.strftime(f"%m_%d_%Y_%H_%M_%S")
+        upload_sftp(host, user, password, sftp_target, f"PT_WSI_{date_string}")
+        logging.info("SFTP finished successfully")
     except Exception as e:
+        logging.error(f"There was an error uploading the order(s) to WSI\n{e}")
         return func.HttpResponse(f"There was an error uploading the order(s) to WSI\n{e}", status_code=500)
 
     return func.HttpResponse(f"The order(s) have uploaded successfully.")
 
-def upload_file(cursor: mysql.connector.connection, orders, requester: Requester) -> Ticket():
+def upload_file(cursor: mysql.connector.connection, orders, requester: Requester):
     """
     Uploads a file containing WSI orders to the WSI database
     
     @type cursor: mysql.connector.connection
     @param cursor: Connection to the WSI orders database
-    @type orders: file or str
+    @type orders: A file like object with a .read() method
     @param orders: The WSI orders to be uploaded
     @type requester: Requester
     @param requester: Object to make requests to the ShipStation API"""
@@ -79,8 +82,6 @@ def upload_file(cursor: mysql.connector.connection, orders, requester: Requester
     orders = pick_ticket.get_orders()
 
     _upload_to_api(cursor, orders, requester)
-
-    return pick_ticket
 
 
 def upload_sftp(host: str, user: str, password: str, file, file_name: str):
@@ -101,6 +102,8 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     client.connect(host, username=user, password=password)
 
     transport = client.get_transport()
+
+    file.seek(0)
 
     sftp = SFTPClient.from_transport(transport)
     sftp.putfo(file, f"/Outbound/{file_name}.csv")
