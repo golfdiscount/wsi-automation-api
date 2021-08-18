@@ -44,6 +44,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("Data commited")
     logging.info("Closing connection to database...")
     cnx.close()
+    logging.info("Connection closed")
 
     logging.info("Initiating SFTP to WSI...")
 
@@ -99,6 +100,8 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     client = pm.SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
     client.connect(host, username=user, password=password)
+
+    logging.info("SSH client has successfully connected")
 
     transport = client.get_transport()
 
