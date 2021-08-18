@@ -102,8 +102,12 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     logging.info("SSH client initiated...")
 
     client.set_missing_host_key_policy(AutoAddPolicy())
+    logging.info("Missing host policy updated")
+
     try:
+        logging.info("Attemtping to connect")
         client.connect(host, username=user, password=password)
+        logging.info("Connection succeeded")
     except Exception as e:
         raise e
 
