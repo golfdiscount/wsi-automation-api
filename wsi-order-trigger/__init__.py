@@ -58,7 +58,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         now = datetime.datetime.now()
         date_string = now.strftime(f"%m_%d_%Y_%H_%M_%S")
         # TODO: Remove before commiting to production
-        # upload_sftp(host, user, password, sftp_target, f"PT_WSI_{date_string}")
+        upload_sftp(host, user, password, sftp_target, f"PT_WSI_{date_string}")
         logging.info("SFTP finished successfully")
     except Exception as e:
         logging.error(f"There was an error uploading the order(s) to WSI\n{e}")
@@ -108,7 +108,7 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     file.seek(0)
 
     sftp = SFTPClient.from_transport(transport)
-    sftp.putfo(file, f"/Inbound/{file_name}.csv")
+    sftp.putfo(file, f"/Outbound/{file_name}.csv")
 
     client.close()
 
