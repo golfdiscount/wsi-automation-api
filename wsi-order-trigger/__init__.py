@@ -18,8 +18,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         cnx = mysql.connector.connect(user=config["mysql"]["user"],
                                 password=config["mysql"]["pass"],
                                 host=config["mysql"]["host"],
-                                database=config["mysql"]["database"],
-                                pool_name="func_pool")
+                                database=config["mysql"]["database"])
         cursor = cnx.cursor()
 
         logging.info("ShipStation API requester initializing...")
