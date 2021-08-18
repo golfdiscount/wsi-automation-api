@@ -31,6 +31,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain")
 
 def createHeader(req: func.HttpRequest) -> dict:
+    """
+    Extracts pick ticket header detail from the submitted form data
+    """
     header = {}
 
     header["pick_ticket_num"] = f"C{req.form['order_num']}"
@@ -66,6 +69,8 @@ def createHeader(req: func.HttpRequest) -> dict:
     return header
 
 def createDetail(req: func.HttpRequest) -> dict:
+    """
+    Extracts pick ticket detail details from the submitted form data"""
     detail = {}
 
     detail["pick_ticket_num"] = f"C{req.form['order_num']}"
