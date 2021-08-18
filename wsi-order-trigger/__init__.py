@@ -98,6 +98,9 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     @param file: File to be uploaded
     """
     client = pm.SSHClient()
+
+    logging.info("SSH client initiated...")
+
     client.set_missing_host_key_policy(AutoAddPolicy())
     try:
         client.connect(host, username=user, password=password)
