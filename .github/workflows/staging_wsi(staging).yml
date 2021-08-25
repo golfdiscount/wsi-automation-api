@@ -40,4 +40,4 @@ jobs:
         app-name: 'wsi'
         slot-name: 'staging'
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_243415671c6846a4ab68a0cddd312dec }}
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_ba8524a50be14de8804890d0be987e44 }}

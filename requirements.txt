@@ -6,3 +6,4 @@ azure-functions
 pandas
 mysql.connector
 requests
+paramiko
