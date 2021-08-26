@@ -3,6 +3,7 @@ import mysql.connector
 import azure.functions as func
 import paramiko as pm
 import datetime
+import os
 from paramiko.client import AutoAddPolicy
 from paramiko.sftp_client import SFTPClient
 from . import wsi
@@ -43,12 +44,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("Data commited")
     logging.info("Closing connection to database...")
     cnx.close()
+    logging.info("Connection closed")
 
     logging.info("Initiating SFTP to WSI...")
 
-    host = "transfer.warehouseservices.com"
-    user = "ProGolfDiscount"
-    password = "KbFi*5I#a1S!vu2j"
     if file is not None:
         sftp_target = file
     else:
@@ -58,7 +57,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         now = datetime.datetime.now()
         date_string = now.strftime(f"%m_%d_%Y_%H_%M_%S")
         # TODO: Remove before commiting to production
-        # upload_sftp(host, user, password, sftp_target, f"PT_WSI_{date_string}")
+        upload_sftp(os.environ['WSI_HOST'], os.environ['WSI_USER'], os.environ['WSI_PASS'], sftp_target, f"PT_WSI_{date_string}")
         logging.info("SFTP finished successfully")
     except Exception as e:
         logging.error(f"There was an error uploading the order(s) to WSI\n{e}")
@@ -99,8 +98,20 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     @param file: File to be uploaded
     """
     client = pm.SSHClient()
+
+    logging.info("SSH client initiated...")
+
     client.set_missing_host_key_policy(AutoAddPolicy())
-    client.connect(host, username=user, password=password)
+    logging.info("Missing host policy updated")
+
+    try:
+        logging.info("Attemtping to connect")
+        client.connect(host, username=user, password=password)
+        logging.info("Connection succeeded")
+    except Exception as e:
+        raise e
+
+    logging.info("SSH client has successfully connected")
 
     transport = client.get_transport()
 
@@ -108,7 +119,7 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     file.seek(0)
 
     sftp = SFTPClient.from_transport(transport)
-    sftp.putfo(file, f"/Inbound/{file_name}.csv")
+    sftp.putfo(file, f"/Outbound/{file_name}.csv")
 
     client.close()
 
