@@ -4,8 +4,8 @@ import os
 import azure.functions as func
 from .pickticket.pickticket import Ticket
 
-async def main():
-    return func.HttpResponse(requests.get('ifconfig.me'))
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    return(requests.get('https://api.ipify.org').text)
 
 """
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -33,9 +33,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"There was an error uploading the order to the database\n{e}", status_code=500)
 
     return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain")
+"""
 
 def createHeader(req: func.HttpRequest) -> dict:
+    """
     Creates a header object to be used in a WSI pick ticket file
+    """
     header = {}
 
     header["pick_ticket_num"] = f"C{req.form['order_num']}"
@@ -81,4 +84,3 @@ def createDetail(req: func.HttpRequest) -> dict:
     detail["unit_price"] = req.form["price"]
 
     return detail
-"""
