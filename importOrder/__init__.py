@@ -30,7 +30,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500)
 
     file = req.files.get('file')
-    
+
 
     if file is not None:
         upload_file(cursor, file, requester)
@@ -56,7 +56,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         now = datetime.datetime.now()
         date_string = now.strftime(f"%m_%d_%Y_%H_%M_%S")
-        # TODO: Remove before commiting to production
         upload_sftp(os.environ['WSI_HOST'], os.environ['WSI_USER'], os.environ['WSI_PASS'], sftp_target, f"PT_WSI_{date_string}")
         logging.info("SFTP finished successfully")
     except Exception as e:
@@ -68,13 +67,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 def upload_file(cursor: mysql.connector.connection, orders, requester: Requester):
     """
     Uploads a file containing WSI orders to the WSI database
-    
+
     @type cursor: mysql.connector.connection
     @param cursor: Connection to the WSI orders database
     @type orders: A file like object with a .read() method
     @param orders: The WSI orders to be uploaded
     @type requester: Requester
-    @param requester: Object to make requests to the ShipStation API"""
+    @param requester: Object to make requests to the ShipStation API
+    """
 
     pick_ticket = Ticket()
     pick_ticket.read_csv(orders)
@@ -98,16 +98,12 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     @param file: File to be uploaded
     """
     client = pm.SSHClient()
-
-    logging.info("SSH client initiated...")
-
     client.set_missing_host_key_policy(AutoAddPolicy())
-    logging.info("Missing host policy updated")
 
     try:
-        logging.info("Attemtping to connect")
+        logging.info("Connecting to WSI Server...")
         client.connect(host, username=user, password=password)
-        logging.info("Connection succeeded")
+        logging.info("Connection successful")
     except Exception as e:
         raise e
 
