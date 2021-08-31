@@ -19,7 +19,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f"Attempting to upload order {header['order_num']} now...")
 
     try:
-        res = requests.post(os.environ['FUNCTIONS_URL'], data=bytes(str(ticket), "utf-8"))
+        res = requests.post(os.environ['FUNCTIONS_URL'] + "/importOrder", data=bytes(str(ticket), "utf-8"))
 
         if res.status_code != 200:
             res.raise_for_status()
