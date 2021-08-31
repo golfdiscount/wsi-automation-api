@@ -4,7 +4,6 @@ import os
 import azure.functions as func
 from .pickticket.pickticket import Ticket
 
-
 def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         header = createHeader(req)
@@ -20,7 +19,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f"Attempting to upload order {header['order_num']} now...")
 
     try:
-        res = requests.post(os.environ['FUNCTIONS_URL'], data=bytes(str(ticket), "utf-8"))
+        res = requests.post(os.environ['FUNCTIONS_URL'] + "/importOrder", data=bytes(str(ticket), "utf-8"))
 
         if res.status_code != 200:
             res.raise_for_status()
@@ -31,9 +30,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain")
 
+
 def createHeader(req: func.HttpRequest) -> dict:
     """
-    Extracts pick ticket header detail from the submitted form data
+    Creates a header object to be used in a WSI pick ticket file
     """
     header = {}
 
@@ -71,7 +71,8 @@ def createHeader(req: func.HttpRequest) -> dict:
 
 def createDetail(req: func.HttpRequest) -> dict:
     """
-    Extracts pick ticket detail details from the submitted form data"""
+    Creates a detail object to be used in a WSI pick ticket file
+    """
     detail = {}
 
     detail["pick_ticket_num"] = f"C{req.form['order_num']}"
