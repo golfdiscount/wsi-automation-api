@@ -56,7 +56,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         now = datetime.datetime.now()
         date_string = now.strftime(f"%m_%d_%Y_%H_%M_%S")
-        # upload_sftp(os.environ['WSI_HOST'], os.environ['WSI_USER'], os.environ['WSI_PASS'], sftp_target, f"PT_WSI_{date_string}")
+        upload_sftp(os.environ['WSI_HOST'], os.environ['WSI_USER'], os.environ['WSI_PASS'], sftp_target, f"PT_WSI_{date_string}")
         logging.info("SFTP finished successfully")
     except Exception as e:
         logging.error(f"There was an error uploading the order(s) to WSI\n{e}")
