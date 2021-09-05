@@ -24,7 +24,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         logging.info("ShipStation API requester initializing...")
 
         requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
-        requester.encode_base64("3b72e28b4eb547ab976cc0ac8b1a0662", "fe2bbc64d7de426c8c298b4107dac60a")
+        requester.encode_base64(os.environ['SS_KEY'], os.environ['SS_SECRET_KEY'])
     except Exception as e:
         logging.error(f"There was an error connecting to either the database or ShipStation\n{str(e)}")
         return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500)
