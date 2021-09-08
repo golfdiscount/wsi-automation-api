@@ -28,7 +28,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         return func.HttpResponse(f"There was an error uploading the order to the database\n{e}", status_code=500)
 
-    return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain")
+    return func.HttpResponse(bytes(str(ticket), "utf-8"), mimetype="text/plain", status_code=200)
 
 
 def createHeader(req: func.HttpRequest) -> dict:

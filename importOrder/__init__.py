@@ -22,22 +22,22 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         cursor = cnx.cursor()
 
         logging.info("ShipStation API requester initializing...")
-
         requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
         requester.encode_base64(os.environ['SS_KEY'], os.environ['SS_SECRET_KEY'])
     except Exception as e:
         logging.error(f"There was an error connecting to either the database or ShipStation\n{str(e)}")
-        return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500)
+        return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500, mimetype='text/plain')
 
     file = req.files.get('file')
 
-
     if file is not None:
         upload_file(cursor, file, requester)
+        sftp_target = file
     else:
         body = req.get_body()
         body = bytes.decode(body)
         upload_file(cursor, StringIO(body), requester)
+        sftp_target = StringIO(body)
 
     logging.info("Committing data to database...")
     cnx.commit()
@@ -45,13 +45,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("Closing connection to database...")
     cnx.close()
     logging.info("Connection closed")
-
     logging.info("Initiating SFTP to WSI...")
-
-    if file is not None:
-        sftp_target = file
-    else:
-        sftp_target = StringIO(body)
 
     try:
         now = datetime.datetime.now()
@@ -60,9 +54,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         logging.info("SFTP finished successfully")
     except Exception as e:
         logging.error(f"There was an error uploading the order(s) to WSI\n{e}")
-        return func.HttpResponse(f"There was an error uploading the order(s) to WSI\n{e}", status_code=500)
+        return func.HttpResponse(f"There was an error uploading the order(s) to WSI\n{e}", status_code=500, mimetype='text/plain')
 
-    return func.HttpResponse(f"The order(s) have uploaded successfully.")
+    return func.HttpResponse(f"The order(s) have uploaded successfully.", status_code=200, mimetype='text/plain')
 
 def upload_file(cursor: mysql.connector.connection, orders, requester: Requester):
     """
