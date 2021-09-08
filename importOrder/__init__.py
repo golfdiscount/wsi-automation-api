@@ -1,4 +1,5 @@
 import logging
+from azure.functions import http
 import mysql.connector
 import azure.functions as func
 import paramiko as pm
@@ -11,6 +12,7 @@ from .config import config
 from .Requests import Requester
 from pickticket.pickticket import Ticket
 from io import StringIO
+from pandas.errors import EmptyDataError
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -31,7 +33,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     file = req.files.get('file')
 
     if file is not None:
-        upload_file(cursor, file, requester)
+        try:
+            upload_file(cursor, file, requester)
+        except EmptyDataError:
+            return func.HttpResponse('An empty file was submitted to the API', status_code=400, mimetype='text/plain')
         sftp_target = file
     else:
         body = req.get_body()
