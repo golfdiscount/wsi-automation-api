@@ -2,7 +2,7 @@ import logging
 import requests
 import os
 import azure.functions as func
-from .pickticket.pickticket import Ticket
+from pickticket.pickticket import Ticket
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     try:

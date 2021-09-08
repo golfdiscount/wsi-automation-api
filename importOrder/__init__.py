@@ -9,7 +9,7 @@ from paramiko.sftp_client import SFTPClient
 from . import wsi
 from .config import config
 from .Requests import Requester
-from .pickticket.pickticket import Ticket
+from pickticket.pickticket import Ticket
 from io import StringIO
 
 
