@@ -114,7 +114,7 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     file.seek(0)
 
     sftp = SFTPClient.from_transport(transport)
-    sftp.putfo(file, f"/Outbound/{file_name}.csv")
+    sftp.putfo(file, f"/Inbound/{file_name}.csv")
 
     client.close()
 
