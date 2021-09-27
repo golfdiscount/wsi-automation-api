@@ -114,6 +114,7 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     file.seek(0)
 
     sftp = SFTPClient.from_transport(transport)
+    logging.info(f"Uploading files to the {os.environ['target']} directory")
     sftp.putfo(file, f"/{os.environ['target']}/{file_name}.csv")
 
     client.close()
