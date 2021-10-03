@@ -1,3 +1,6 @@
+"""
+Uploads WSI orders to a MySQL database on Azure
+"""
 import logging
 from azure.functions import http
 import mysql.connector
@@ -8,7 +11,6 @@ import os
 from paramiko.client import AutoAddPolicy
 from paramiko.sftp_client import SFTPClient
 from . import wsi
-from .config import config
 from .Requests import Requester
 from pickticket.pickticket import Ticket
 from io import StringIO
@@ -16,11 +18,14 @@ from pandas.errors import EmptyDataError
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Entry point for trigger
+    """
     try:
-        cnx = mysql.connector.connect(user=config["mysql"]["user"],
-                                password=config["mysql"]["pass"],
-                                host=config["mysql"]["host"],
-                                database=config["mysql"]["database"])
+        cnx = mysql.connector.connect(user=os.environ['db_user'],
+                                password=os.environ['db_pass'],
+                                host=os.environ['db_host'],
+                                database=os.environ['db_database'])
         cursor = cnx.cursor()
 
         logging.info("ShipStation API requester initializing...")
