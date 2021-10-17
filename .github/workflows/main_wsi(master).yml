@@ -65,6 +65,6 @@ jobs:
           app-name: 'wsi'
           slot-name: 'master'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_13C33ABA7C6241C286A71AEB722F394E }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_1351A5DD4D244DDFA227EAA477D90F6A }}
           scm-do-build-during-deployment: true
           enable-oryx-build: true
