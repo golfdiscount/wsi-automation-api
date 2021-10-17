@@ -1,21 +1,19 @@
 """
 Uploads WSI orders to a MySQL database on Azure
 """
-import logging
-from azure.functions import http
-import mysql.connector
 import azure.functions as func
-import paramiko as pm
 import datetime
+from io import StringIO
 import os
+import logging
+import mysql.connector
+from pandas.errors import EmptyDataError
+import paramiko as pm
 from paramiko.client import AutoAddPolicy
 from paramiko.sftp_client import SFTPClient
+from pickticket.pickticket import Ticket
 from . import wsi
 from .Requests import Requester
-from pickticket.pickticket import Ticket
-from io import StringIO
-from pandas.errors import EmptyDataError
-
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -46,7 +44,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     else:
         body = req.get_body()
         body = bytes.decode(body)
-        upload_file(cursor, StringIO(body), requester)
+        try:
+            upload_file(cursor, StringIO(body), requester)
+        except mysql.connector.IntegrityError:
+            cnx.rollback()
+            return func.HttpResponse("File integrity error, there is most likely duplicate orders in this file or from previously inserted files", status_code=400, mimetype="text/plain")
         sftp_target = StringIO(body)
 
     logging.info("Committing data to database...")
@@ -78,6 +80,7 @@ def upload_file(cursor: mysql.connector.connection, orders, requester: Requester
     @param orders: The WSI orders to be uploaded
     @type requester: Requester
     @param requester: Object to make requests to the ShipStation API
+    @raise mysql.connector.IntegrityError: Invalid relational integrity, most likely duplicate orders
     """
 
     pick_ticket = Ticket()
@@ -85,7 +88,10 @@ def upload_file(cursor: mysql.connector.connection, orders, requester: Requester
 
     orders = pick_ticket.get_orders()
 
-    _upload_to_api(cursor, orders, requester)
+    try:
+        _upload_to_api(cursor, orders, requester)
+    except mysql.connector.IntegrityError as e:
+        raise e
 
 
 def upload_sftp(host: str, user: str, password: str, file, file_name: str):
@@ -133,11 +139,15 @@ def _upload_to_api(cursor, orders, requester):
     @param cursor: Cursor corresponding to the WSI orders database
     @type orders: dict
     @param orders: A set of orders on the pick ticket
+    @raise mysql.connector.IntegrityError: Invalid relational integrity, most likely duplicate orders
     """
     for ticket in orders:
         header = orders[ticket]["header"]
         logging.info(f"Uploading order {header.get_pick_num()}")
-        _upload_header(cursor, header)
+        try:
+            _upload_header(cursor, header)
+        except mysql.connector.IntegrityError as e:
+            raise e
 
         for detail in orders[ticket]["details"]:
             _upload_detail(cursor, orders[ticket]["details"][detail], requester)
