@@ -45,9 +45,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             upload_file(cursor, StringIO(body), requester)
             sftp_target = StringIO(body)
     except EmptyDataError:
+        logging.warning("File submitted with no content")
         return func.HttpResponse('An empty file was submitted to the API', status_code=400, mimetype='text/plain')
     except mysql.connector.IntegrityError:
         cnx.rollback()
+        logging.error("File integrity error, there is most likely duplicate orders in this file or from previously inserted files")
         return func.HttpResponse("File integrity error, there is most likely duplicate orders in this file or from previously inserted files", status_code=400, mimetype="text/plain")
 
     logging.info("Committing data to database...")
