@@ -66,7 +66,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         upload_sftp(os.environ['WSI_HOST'], os.environ['WSI_USER'], os.environ['WSI_PASS'], sftp_target, f"PT_WSI_{date_string}")
         logging.info("SFTP finished successfully")
     except Exception as e:
-        logging.error(f"There was an error uploading the order(s) to WSI\n{e}")
+        logging.error(f"There was an error uploading the order(s) to WSI: {e}")
         return func.HttpResponse(f"There was an error uploading the order(s) to WSI\n{e}", status_code=500, mimetype='text/plain')
 
     return func.HttpResponse(f"The order(s) have uploaded successfully.", status_code=200, mimetype='text/plain')
@@ -127,7 +127,7 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
 
     sftp = SFTPClient.from_transport(transport)
     logging.info(f"Uploading files to the {os.environ['target']} directory")
-    sftp.putfo(file, f"/{os.environ['target']}/{file_name}.csv")
+    sftp.putfo(file, f"/{os.environ['target']}/{file_name}.csv", confirm=False)
 
     client.close()
 
