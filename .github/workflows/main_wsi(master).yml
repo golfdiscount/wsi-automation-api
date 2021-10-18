@@ -2,7 +2,7 @@
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Python project to Azure Function App - wsi
+name: Deploy main branch to master slot
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
+
       # Optional: Add step to run tests here
 
       - name: Upload artifact for deployment job
@@ -41,7 +41,7 @@ jobs:
         with:
           name: python-app
           path: |
-            . 
+            .
             !venv/
 
   deploy:
