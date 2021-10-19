@@ -49,8 +49,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse('An empty file was submitted to the API', status_code=400, mimetype='text/plain')
     except mysql.connector.IntegrityError:
         cnx.rollback()
-        logging.error("File integrity error, there is most likely duplicate orders in this file or from previously inserted files")
-        return func.HttpResponse("File integrity error, there is most likely duplicate orders in this file or from previously inserted files", status_code=400, mimetype="text/plain")
+        logging.error("Relational integrity error, there is most likely duplicate orders in this file or from previously inserted files")
+        return func.HttpResponse("Relational integrity error, there is most likely duplicate orders in this file or from previously inserted files", status_code=400, mimetype="text/plain")
 
     logging.info("Committing data to database...")
     cnx.commit()
