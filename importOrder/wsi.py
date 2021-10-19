@@ -72,7 +72,7 @@ def add_order(cursor, order_info):
     @param order_info Contains order information such as order number and date
     """
     qry = f"""
-    INSERT INTO IGNORE wsi_order(
+    INSERT IGNORE INTO wsi_order(
         pick_ticket_num,
         order_num,
         sold_to,
