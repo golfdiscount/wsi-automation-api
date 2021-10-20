@@ -7,4 +7,4 @@ pandas
 mysql.connector
 requests
 paramiko
-git+https://github.com/pgd-harmeet/Pickticket.git
+git+https://github.com/pgd-harmeet/Pickticket.git@v1.0.1
