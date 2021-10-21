@@ -14,6 +14,7 @@ from paramiko.sftp_client import SFTPClient
 from pickticket.pickticket import Ticket
 from . import wsi
 from .Requests import Requester
+import requests
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -144,6 +145,7 @@ def _upload_to_api(cursor, orders, requester):
     """
     for ticket in orders:
         header = orders[ticket]["header"]
+        requests.post("https://gd-shipstation.azurewebsites.net/api/addCustomerOrder", params={"orderNumber": header.get_pick_num() + "_WSI", "note": "Sent to WSI"})
         logging.info(f"Uploading order {header.get_pick_num()}")
         try:
             _upload_header(cursor, header)
