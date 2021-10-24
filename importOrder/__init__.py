@@ -145,7 +145,7 @@ def _upload_to_api(cursor, orders, requester):
     """
     for ticket in orders:
         header = orders[ticket]["header"]
-        requests.post("https://gd-shipstation-staging.azurewebsites.net/api/addCustomerNote", params={"orderNumber": header.get_pick_num()[1:]})
+        #requests.post("https://gd-shipstation-staging.azurewebsites.net/api/addCustomerNote", params={"orderNumber": header.get_pick_num()[1:]})
         logging.info(f"Uploading order {header.get_pick_num()}")
         try:
             _upload_header(cursor, header)
