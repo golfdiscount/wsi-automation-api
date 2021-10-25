@@ -146,7 +146,7 @@ def _upload_to_api(cursor, orders, requester):
     for ticket in orders:
         header = orders[ticket]["header"]
         try:
-            requests.post("https://gd-shipstation-staging.azurewebsites.net/api/queueCustomerNote", params={"orderNumber": header.get_pick_num()[1:]})
+            requests.post(os.environ.get("shipstation_url") + "/queueCustomerNote", params={"orderNumber": header.get_pick_num()[1:]})
         except Exception:
             logging.warn(f"Unable to queue order {header.get_pick_num()[1:]}")
         logging.info(f"Uploading order {header.get_pick_num()}")
