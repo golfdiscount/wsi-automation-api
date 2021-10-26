@@ -13,7 +13,6 @@ from paramiko.client import AutoAddPolicy
 from paramiko.sftp_client import SFTPClient
 from pickticket.pickticket import Ticket
 from . import wsi
-from .Requests import Requester
 import requests
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -27,9 +26,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                                 database=os.environ['db_database'])
         cursor = cnx.cursor()
 
-        logging.info("ShipStation API requester initializing...")
-        requester = Requester("https://ssapi.shipstation.com", "ssapi.shipstation.com")
-        requester.encode_base64(os.environ['SS_KEY'], os.environ['SS_SECRET_KEY'])
+        logging.info("ShipStation API session initializing...")
+        ss = requests.session()
+        ss.headers.update({"Authorization": os.environ["SS_CREDS"]})
+
     except Exception as e:
         logging.error(f"There was an error connecting to either the database or ShipStation\n{str(e)}")
         return func.HttpResponse(f"There was an error connecting to either the database or ShipStation\n{str(e)}", status_code=500, mimetype='text/plain')
@@ -38,12 +38,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         if file is not None:
-            upload_file(cursor, file, requester)
+            upload_file(cursor, file, ss)
             sftp_target = file
         else:
             body = req.get_body()
             body = bytes.decode(body)
-            upload_file(cursor, StringIO(body), requester)
+            upload_file(cursor, StringIO(body), ss)
             sftp_target = StringIO(body)
     except EmptyDataError:
         logging.warning("File submitted with no content")
@@ -72,7 +72,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(f"The order(s) have uploaded successfully.", status_code=200, mimetype='text/plain')
 
-def upload_file(cursor: mysql.connector.connection, orders, requester: Requester):
+def upload_file(cursor: mysql.connector.connection, orders, session: requests.Session):
     """
     Uploads a file containing WSI orders to the WSI database
 
@@ -80,8 +80,8 @@ def upload_file(cursor: mysql.connector.connection, orders, requester: Requester
     @param cursor: Connection to the WSI orders database
     @type orders: A file like object with a .read() method
     @param orders: The WSI orders to be uploaded
-    @type requester: Requester
-    @param requester: Object to make requests to the ShipStation API
+    @type session: requests.Session
+    @param session: Object to make requests to the ShipStation API
     @raise mysql.connector.IntegrityError: Invalid relational integrity, most likely duplicate orders
     """
 
@@ -91,7 +91,7 @@ def upload_file(cursor: mysql.connector.connection, orders, requester: Requester
     orders = pick_ticket.get_orders()
 
     try:
-        _upload_to_api(cursor, orders, requester)
+        _upload_to_api(cursor, orders, session)
     except mysql.connector.IntegrityError as e:
         raise e
 
@@ -133,7 +133,7 @@ def upload_sftp(host: str, user: str, password: str, file, file_name: str):
     client.close()
 
 
-def _upload_to_api(cursor, orders, requester):
+def _upload_to_api(cursor, orders, session: requests.Session):
     """
     Breaks down a header and a detail for each order and inserts them into the database
 
@@ -156,7 +156,7 @@ def _upload_to_api(cursor, orders, requester):
             raise e
 
         for detail in orders[ticket]["details"]:
-            _upload_detail(cursor, orders[ticket]["details"][detail], requester)
+            _upload_detail(cursor, orders[ticket]["details"][detail], session)
 
 
 def _upload_header(cursor: mysql.connector.connection, header) -> None:
@@ -186,7 +186,7 @@ def _upload_header(cursor: mysql.connector.connection, header) -> None:
     })
 
 
-def _upload_detail(cursor: mysql.connector.connection, detail, requester: Requester):
+def _upload_detail(cursor: mysql.connector.connection, detail, session: requests.Session):
     """
     Uploads information from a detail record to the WSI API
 
@@ -196,7 +196,7 @@ def _upload_detail(cursor: mysql.connector.connection, detail, requester: Reques
     @param detail: Detail record to be uploaded
     """
     sku = detail.get_sku()
-    detail.set_sku_name(_get_sku_name(requester.get("/products", {"sku": sku}), sku))
+    detail.set_sku_name(_get_sku_name(session.get("https://ssapi.shipstation.com/products", {"sku": sku}), sku))
     detail = detail.get_pick_details()
     # Add product
     wsi.add_product(cursor, {
