@@ -162,7 +162,7 @@ class OrderImporter:
         if sku in self._skus:
             return self._skus[sku]
 
-        res = self.session.get("https://ssapi.shipstation.com/products", {"sku": sku})
+        res = self.session.get("https://ssapi.shipstation.com/products", params={"sku": sku})
 
         for product in res["products"]:
             if product["sku"] == sku:
