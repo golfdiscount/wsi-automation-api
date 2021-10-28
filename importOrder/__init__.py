@@ -8,7 +8,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     """Process files, insert them into the DB, and SFTP to WSI"""
     importer = OrderImporter()
 
-    file = req.fiels.get("file")
+    file = req.files.get("file")
 
     if file is not None:
         importer.process_fo(file)
