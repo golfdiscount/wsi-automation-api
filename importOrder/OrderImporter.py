@@ -71,7 +71,7 @@ class OrderImporter:
                 logging.info(f"Uploading order {header.get_pick_num()}")
                 self._upload_header(header)
 
-                details = self[order]["details"]
+                details = orders[order]["details"]
                 for detail in details:
                     self._upload_detail(details[detail])
 
