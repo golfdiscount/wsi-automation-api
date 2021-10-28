@@ -74,9 +74,9 @@ class OrderImporter:
                 details = orders[order]["details"]
                 for detail in details:
                     self._upload_detail(details[detail])
-
-                logging.info("Committing data to dtatbase...")
-                self.cnx.commit()
+                
+            logging.info("Committing data to database...")
+            self.cnx.commit()
         except mysql.connector.IntegrityError:
             logging.error("Relational integrity error, there is most likely duplicate orders in this file or from previously inserted files")
             self.cnx.rollback()
