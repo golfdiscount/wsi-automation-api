@@ -41,7 +41,8 @@ class OrderImporter:
             file_bytes: A bytes object with pickticket information
         """
         self._file = StringIO(file_bytes)
-        self.ticket = Ticket(StringIO(file_bytes))
+        self.ticket = Ticket()
+        self.ticket.read_csv(StringIO(file_bytes))
 
     def trigger_upload_flow(self):
         """Starts a workflow run of trigger a file upload
