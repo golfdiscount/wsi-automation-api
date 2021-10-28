@@ -133,10 +133,10 @@ class OrderImporter:
         client.connect(os.environ['WSI_HOST'], username=os.environ['WSI_USER'], password=os.environ['WSI_PASS'])
         logging.info("Connection successful")
 
-        self.file.seek(0)
+        self._file.seek(0)
         sftp = SFTPClient.from_transport(client.get_transport())
         logging.info(f"Uploading files to the {os.environ['target']} directory")
-        sftp.putfo(self.file, f"/{os.environ['target']}/PT_WSI_{date_string}.csv", confirm=False)
+        sftp.putfo(self._file, f"/{os.environ['target']}/PT_WSI_{date_string}.csv", confirm=False)
         logging.info("SFTP finished successfully")
 
         client.close()
