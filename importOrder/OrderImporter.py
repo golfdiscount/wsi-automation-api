@@ -27,16 +27,17 @@ class OrderImporter:
 
     def process_fo(self, file):
         """Turns a file object in a Pickticket object
-        
+
         Args:
             file: An object with a .read() method with pickticket information
         """
         self._file = file
-        self.ticket = Ticket(file)
+        self.ticket = Ticket()
+        self.ticket.read_csv(file)
 
     def process_bytes(self, file_bytes: bytes):
         """Turns a byte stream into a Pickticket object
-        
+
         Args:
             file_bytes: A bytes object with pickticket information
         """
@@ -46,7 +47,7 @@ class OrderImporter:
 
     def trigger_upload_flow(self):
         """Starts a workflow run of trigger a file upload
-        
+
         1) Upload to database
         2) SFTP orders to WSI filesystem
         3) Queue orders to addCustomerNote queue
@@ -60,7 +61,7 @@ class OrderImporter:
 
     def _upload_to_db(self):
         """Process a list of orders and inserts them into the database
-        
+
         Raises:
             RuntimeError: Duplicate orders in the file or from a previous file
         """
@@ -74,7 +75,7 @@ class OrderImporter:
                 details = orders[order]["details"]
                 for detail in details:
                     self._upload_detail(details[detail])
-                
+
             logging.info("Committing data to database...")
             self.cnx.commit()
         except mysql.connector.IntegrityError:
@@ -85,7 +86,7 @@ class OrderImporter:
         finally:
             logging.info("Closing connection to database...")
             self.cnx.close()
-    
+
     def _upload_header(self, header):
         """Inserts a header record into the database"""
         sold_to_id = wsi.add_cus(self.cursor, header.get_cus_info())
@@ -155,7 +156,7 @@ class OrderImporter:
 
         Args:
             sku (str): The SKU of which to get a name for
-        
+
         Return:
             The matching SKU name or None if cannot be found
         """
