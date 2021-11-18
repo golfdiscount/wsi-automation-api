@@ -77,13 +77,15 @@ def add_order(cursor, order_info):
         order_num,
         sold_to,
         ship_to,
-        ship_method
+        ship_method,
+        order_date
     ) VALUES (
         "{order_info["pick_ticket_num"]}",
         "{order_info["order_num"]}",
         {order_info["sold_to"]},
         {order_info["ship_to"]},
-        "{order_info["ship_method"]}"
+        "{order_info["ship_method"]}",
+        STR_TO_DATE("{order_info["order_date"]}", "%m/%d/%Y")
     ) ON DUPLICATE KEY UPDATE last_updated = CURRENT_TIMESTAMP;
     """
 
