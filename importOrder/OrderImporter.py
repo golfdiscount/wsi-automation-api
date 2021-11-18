@@ -56,8 +56,6 @@ class OrderImporter:
         self._upload_to_db()
         logging.info("Initating SFTP to WSI...")
         self._upload_sftp()
-        logging.info("Queueing orders into the addCustomerNote queue")
-        self._queue_customer_notes()
 
     def _upload_to_db(self):
         """Process a list of orders and inserts them into the database
@@ -141,14 +139,6 @@ class OrderImporter:
         logging.info("SFTP finished successfully")
 
         client.close()
-
-    def _queue_customer_notes(self):
-        """Queues orders to have "Sent to WSI" note added"""
-        orders =  self.ticket.get_orders()
-        for order in orders:
-            header = orders[order]["header"]
-
-        requests.post(os.environ.get("shipstation_url") + "/queueCustomerNote", params={"orderNumber": header.get_pick_num()[1:]})
 
     def _get_sku_name(self, sku: str) -> str or None:
         """
