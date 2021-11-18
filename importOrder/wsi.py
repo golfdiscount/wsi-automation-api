@@ -16,8 +16,8 @@ def add_cus(cursor, cus_info):
         sold_to_city,
         sold_to_state,
         sold_to_country,
-        sold_to_zip)
-    VALUES (
+        sold_to_zip
+    ) VALUES (
         "{cus_info["sold_to_name"]}",
         "{cus_info["sold_to_address"]}",
         "{cus_info["sold_to_city"]}",
@@ -42,14 +42,14 @@ def add_rec(cursor, rec_info):
     @return: The id for the recipient
     """
     qry = f"""
-    INSERT INTO recipient(
+    INSERT INTO recipient (
         ship_to_name,
         ship_to_address,
         ship_to_city,
         ship_to_state,
         ship_to_country,
-        ship_to_zip)
-    VALUES (
+        ship_to_zip
+    ) VALUES (
         "{rec_info["ship_to_name"]}",
         "{rec_info["ship_to_address"]}",
         "{rec_info["ship_to_city"]}",
@@ -72,20 +72,19 @@ def add_order(cursor, order_info):
     @param order_info Contains order information such as order number and date
     """
     qry = f"""
-    INSERT IGNORE INTO wsi_order(
+    INSERT IGNORE INTO wsi_order (
         pick_ticket_num,
         order_num,
         sold_to,
         ship_to,
         ship_method
-        )
-    VALUES (
+    ) VALUES (
         "{order_info["pick_ticket_num"]}",
         "{order_info["order_num"]}",
         {order_info["sold_to"]},
         {order_info["ship_to"]},
         "{order_info["ship_method"]}"
-    );
+    ) ON DUPLICATE KEY UPDATE last_updated = CURRENT_TIMESTAMP;
     """
 
     cursor.execute(qry)
@@ -100,15 +99,15 @@ def add_product(cursor, product_info):
     @param product_info: Contains information about the product such as SKU and name
     """
     qry = f"""
-    INSERT IGNORE INTO product(
+    INSERT INTO product (
         sku,
         sku_name,
-        unit_price)
-    VALUES (
+        unit_price
+    ) VALUES (
         "{product_info["sku"]}",
         "{product_info["sku_name"]}",
         {product_info["unit_price"]}
-    );
+    ) ON DUPLICATE KEY UPDATE last_used = CURRENT_TIMESTAMP;
     """
 
     cursor.execute(qry)
@@ -123,19 +122,19 @@ def add_lt(cursor, line_info):
     @param line_info: Information about the line item such as line number and product sku
     """
     qry = f"""
-    INSERT INTO line_item(
+    INSERT INTO line_item (
         pick_ticket_num,
         line_num,
         units_to_ship,
         sku,
-        quantity)
-    VALUES (
+        quantity
+    ) VALUES (
         "{line_info["pick_ticket_num"]}",
         {line_info["line_num"]},
         {line_info["units_to_ship"]},
         "{line_info["sku"]}",
         {line_info["quantity"]}
-    );
+    ) ON DUPLICATE KEY UPDATE last_updated = CURRENT_TIMESTAMP;
     """
 
     cursor.execute(qry)
