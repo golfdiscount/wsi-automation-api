@@ -1,3 +1,4 @@
+import datetime
 import azure.functions as func
 import json
 import mysql.connector as sql
@@ -62,8 +63,9 @@ def format_response(cursor) -> dict:
     }
 
     for row in cursor:
+        orderDate: datetime.date = row['order_date']
         response['orderNum'] = row['order_num']
-        response['orderDate'] = str(row['order_date'])
+        response['orderDate'] = orderDate.strftime('%m-%d-%Y')
         response['shippingMethod'] = row['ship_method']
         response['customer'] = {
             'name': row['sold_to_name'],
