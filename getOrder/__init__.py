@@ -1,5 +1,4 @@
 import azure.functions as func
-import datetime
 import json
 import mysql.connector as sql
 import os
