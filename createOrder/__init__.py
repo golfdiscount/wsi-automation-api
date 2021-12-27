@@ -2,9 +2,10 @@ import azure.functions as func
 import logging
 import mysql.connector as sql
 import os
+import requests
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    """Inserts an order into the WSI database
+    """Creates an order in the WSI database
 
     Args:
         req: azure.functions.HttpRequest with order information in JSON body
@@ -62,10 +63,26 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         line = 0
         for product in order['products']:
             line += 1
-            # TODO: Fix sku name
+            product_info = requests.get('https://ssapi.shipstation.com/products',
+                                        params={'sku': product['sku']},
+                                        headers={
+                                            'Authorization': os.environ['SS_CREDS']
+                                        })
+            product_info = product_info.json()
+
+            sku_name = ''
+            for ss_product in product_info['products']:
+                if ss_product['sku'] == product['sku']:
+                    print(sku_name)
+                    sku_name = ss_product['name']
+
+            if sku_name == '':
+                db_cnx.rollback()
+                return func.HttpResponse('The sku entered does not exist in ShipStation', status_code=400)
+
             insert_product(cursor, {
                 'sku': product['sku'],
-                'sku_name': 'sample sku name',
+                'sku_name': sku_name,
                 'unit_price': product['price']
             })
             insert_line_item(cursor, {
@@ -155,7 +172,6 @@ def insert_order(cursor, order: dict) -> None:
         cursor: mysql.connector cursor object used to insert information into the database
         order: dict containing order information
     """
-    print(order['order_date'])
     qry = f"""
     INSERT IGNORE INTO wsi_order (
         pick_ticket_num,
