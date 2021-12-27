@@ -13,7 +13,7 @@ are used in responses from the API and requests to the API.
 ```json
 {
   "orderNum": "Order number",
-  "orderDate": "Date of the order",
+  "orderDate": "Date of the order in ISO format (YYYY-MM-DD)",
   "shippingMethod": "FDXH or FXES or FX2D or FXSO",
   "customer": {
     "name": "Customer first and last name",
