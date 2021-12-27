@@ -4,7 +4,6 @@
 
 azure-functions
 pandas
-mysql.connector
+mysql
 requests
 paramiko
-git+https://github.com/pgd-harmeet/Pickticket.git@v1.0.6
