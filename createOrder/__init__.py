@@ -1,8 +1,17 @@
 import azure.functions as func
+import logging
 import mysql.connector as sql
 import os
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
+    """Inserts an order into the WSI database
+
+    Args:
+        req: azure.functions.HttpRequest with order information in JSON body
+
+    Return:
+        azure.functions.HttpResponse with status code indicating if insertion was successful
+    """
     try:
         order: dict = req.get_json()
     except ValueError:
@@ -46,7 +55,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             'order_num': order['orderNum'],
             'sold_to': customer_id,
             'ship_to': recipient_id,
-            'ship_method': order['shippingMethod']
+            'ship_method': order['shippingMethod'],
+            'order_date': order['orderDate']
         })
 
         line = 0
@@ -59,15 +69,21 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 'unit_price': product['price']
             })
             insert_line_item(cursor, {
-                'pick_ticket_num': f'C{order["Num"]}',
+                'pick_ticket_num': f'C{order["orderNum"]}',
                 'line_num': line,
                 'units_to_ship': product['quantity'],
                 'quantity': product['quantity'],
                 'sku': product['sku']
             })
-    except KeyError:
+    except KeyError as e:
+        db_cnx.rollback()
+        traceback = e.__traceback__
+        while traceback:
+            logging.error("{}: {}".format(traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
+            traceback = traceback.tb_next
         return func.HttpResponse('Please make sure to include all attributes for the order model', status_code=400)
 
+    db_cnx.commit()
     return func.HttpResponse('Order submitted')
 
 def insert_customer(cursor, customer: dict) -> int:
@@ -76,6 +92,9 @@ def insert_customer(cursor, customer: dict) -> int:
     Args:
         cursor: mysql.connector cursor object used to insert information into database
         customer: dict containing customer information
+
+    Return:
+        The row id of the customer entry as an int
     """
     qry = f"""
     INSERT INTO customer(
@@ -104,6 +123,9 @@ def insert_recipient(cursor, recipient: dict) -> int:
     Args:
         cursor: mysql.connector cursor object used to insert information into the database
         recipient: dict containing recipient information
+
+    Return:
+        The row id of the inserted recipient
     """
     qry = f"""
     INSERT INTO recipient (
@@ -133,19 +155,22 @@ def insert_order(cursor, order: dict) -> None:
         cursor: mysql.connector cursor object used to insert information into the database
         order: dict containing order information
     """
+    print(order['order_date'])
     qry = f"""
     INSERT IGNORE INTO wsi_order (
         pick_ticket_num,
         order_num,
         sold_to,
         ship_to,
-        ship_method
+        ship_method,
+        order_date
     ) VALUES (
         "C{order["order_num"]}",
         "{order["order_num"]}",
         {order["sold_to"]},
         {order["ship_to"]},
-        "{order["ship_method"]}"
+        "{order["ship_method"]}",
+        "{order["order_date"]}"
     ) ON DUPLICATE KEY UPDATE last_updated = CURRENT_TIMESTAMP;
     """
 
