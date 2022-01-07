@@ -1,3 +1,6 @@
+"""
+Route to create an order in the WSI database
+"""
 import azure.functions as func
 import logging
 import mysql.connector as sql
@@ -5,7 +8,7 @@ import os
 import requests
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    """Creates an order in the WSI database
+    """Entry point of HTTP request
 
     Args:
         req: azure.functions.HttpRequest with order information in JSON body
@@ -27,8 +30,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     cursor = db_cnx.cursor()    
 
-    """
-    Insert order for the database is:
+    """Insert order for the database is:
     1) Customer
     2) Recipient
     3) Order
