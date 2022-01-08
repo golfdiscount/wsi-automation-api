@@ -1,5 +1,5 @@
 """
-Route to create an order in the WSI database
+Creates a single order in the database and adds it to the blob storage container
 """
 import azure.functions as func
 import logging
@@ -49,6 +49,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             logging.error("{}: {}".format(traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
             traceback = traceback.tb_next
         return func.HttpResponse('There was an error processing your request, please contact administrator', status_code=500)
+    finally:
+        db_cnx.close()
 
     return func.HttpResponse('Order submitted')
 
