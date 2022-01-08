@@ -1,6 +1,7 @@
 """
 Sends WSI pickticket via SFTP to WSI's filesystem
 """
+from io import StringIO
 import azure.functions as func
 import datetime
 import logging
@@ -25,7 +26,7 @@ def main(blob: func.InputStream) -> None:
 
     sftp = SFTPClient.from_transport(client.get_transport())
     logging.info(f'Uploading {blob.name} to {os.environ["target"]} directory')
-    sftp.put(blob.read(), f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
+    sftp.put(StringIO(blob.read()), f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
     logging.info('SFTP finished successfully')
 
     sftp.close()
