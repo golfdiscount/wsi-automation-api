@@ -1,5 +1,5 @@
 """
-Sends WSI pickticket via SFTP to WSI's filesystem
+Sends WSI picktickets that are in the blob storage container to WSI's filesystem
 """
 import azure.functions as func
 import datetime
