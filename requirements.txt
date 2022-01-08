@@ -3,8 +3,8 @@
 # Manually managing azure-functions-worker may cause unexpected issues
 
 azure-functions
+azure-storage-blob
+mysql
 pandas
-mysql.connector
-requests
 paramiko
-git+https://github.com/pgd-harmeet/Pickticket.git@v1.0.6
+requests

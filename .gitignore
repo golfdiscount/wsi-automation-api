@@ -130,3 +130,6 @@ local.settings.json
 .python_packages
 
 *.csv
+
+.idea
+.vscode
