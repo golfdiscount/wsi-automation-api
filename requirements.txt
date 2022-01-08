@@ -3,7 +3,8 @@
 # Manually managing azure-functions-worker may cause unexpected issues
 
 azure-functions
-pandas
+azure-storage-blob
 mysql
-requests
+pandas
 paramiko
+requests
