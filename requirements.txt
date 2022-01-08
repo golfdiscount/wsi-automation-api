@@ -4,7 +4,7 @@
 
 azure-functions
 azure-storage-blob
-mysql
+mysql.connector
 pandas
 paramiko
 requests
