@@ -12,9 +12,9 @@ are used in responses from the API and requests to the API.
 ## Order
 ```json
 {
-  "orderNum": "Order number",
-  "orderDate": "Date of the order in ISO format (YYYY-MM-DD)",
-  "shippingMethod": "FDXH or FXES or FX2D or FXSO",
+  "order_num": "Order number",
+  "order_date": "Date of the order in ISO format (YYYY-MM-DD)",
+  "shipping_method": "FDXH or FXES or FX2D or FXSO",
   "customer": {
     "name": "Customer first and last name",
     "address": "Customer address, including lines apt, suite, unit number, etc.",
@@ -33,7 +33,7 @@ are used in responses from the API and requests to the API.
   },
   "products": [
     {
-      "sku": "SKU number of product",
+      "sku": "SKU number of product wrapped in quotes, should be a string not a number",
       "quantity": "Quantity of product ordered",
       "price": "Price of product as a decimal without a $ at the front"
     }
@@ -55,8 +55,8 @@ associatd with the order number in form of an order model in JSON format.
 POSTing to the `/order` route creates an order. To create an order, submit an order
 model as JSON in the request body. All attributes must be filled to create an order.
 
-After the order is POSTed and inserted into the database, it will immediately be 
-queued to be uploaded to WSI's filesystem. 
+After the order is POSTed and inserted into the database, it will immediately be
+queued to be uploaded to WSI's filesystem.
 
 The API will return a response with the order information returned in CSV format
 adhering to WSI's order format.
