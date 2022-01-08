@@ -26,11 +26,10 @@ def main(blob: func.InputStream) -> None:
     sftp = SFTPClient.from_transport(client.get_transport())
 
     logging.info(f'Uploading {blob.name} to {os.environ["target"]} directory')
-    order = tempfile.TemporaryFile()  # Create a temporary file to use for SFTP
-    order.write(blob.read())
-
-    with order as file:
-        sftp.putfo(file, f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
+    with tempfile.TemporaryFile() as order_file:
+        order_file.write(blob.read())
+        order_file.seek(0)
+        sftp.putfo(order_file, f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
     logging.info('SFTP finished successfully')
 
     sftp.close()
