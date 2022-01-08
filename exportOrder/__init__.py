@@ -26,7 +26,7 @@ def main(blob: func.InputStream) -> None:
 
     sftp = SFTPClient.from_transport(client.get_transport())
     logging.info(f'Uploading {blob.name} to {os.environ["target"]} directory')
-    sftp.put(StringIO(blob.read()), f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
+    sftp.put(str(blob.read(), encoding='utf-8'), f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
     logging.info('SFTP finished successfully')
 
     sftp.close()
