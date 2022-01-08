@@ -7,6 +7,9 @@ import mysql.connector as sql
 import os
 import requests
 
+from azure.storage.blob import BlobClient
+from wsi import Order
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """Entry point of HTTP request
 
@@ -28,82 +31,98 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         database=os.environ['db_database']
     )
 
-    cursor = db_cnx.cursor()    
-
-    """Insert order for the database is:
-    1) Customer
-    2) Recipient
-    3) Order
-    4) Product
-    5) Line item
-    """
+    cursor = db_cnx.cursor()
     try:
-        customer_id = insert_customer(cursor, {
-            'sold_to_name': order['customer']['name'],
-            'sold_to_address': order['customer']['address'],
-            'sold_to_city': order['customer']['city'],
-            'sold_to_state': order['customer']['state'],
-            'sold_to_country': order['customer']['country'],
-            'sold_to_zip': order['customer']['zip']
-        })
-        recipient_id = insert_recipient(cursor, {
-            'ship_to_name': order['recipient']['name'],
-            'ship_to_address': order['recipient']['address'],
-            'ship_to_city': order['recipient']['city'],
-            'ship_to_state': order['recipient']['state'],
-            'ship_to_country': order['recipient']['country'],
-            'ship_to_zip': order['recipient']['zip']
-        })
-        insert_order(cursor, {
-            'order_num': order['orderNum'],
-            'sold_to': customer_id,
-            'ship_to': recipient_id,
-            'ship_method': order['shippingMethod'],
-            'order_date': order['orderDate']
-        })
-
-        line = 0
-        for product in order['products']:
-            line += 1
-            product_info = requests.get('https://ssapi.shipstation.com/products',
-                                        params={'sku': product['sku']},
-                                        headers={
-                                            'Authorization': os.environ['SS_CREDS']
-                                        })
-            product_info = product_info.json()
-
-            sku_name = ''
-            for ss_product in product_info['products']:
-                if ss_product['sku'] == product['sku']:
-                    print(sku_name)
-                    sku_name = ss_product['name']
-
-            if sku_name == '':
-                db_cnx.rollback()
-                return func.HttpResponse('The sku entered does not exist in ShipStation', status_code=400)
-
-            insert_product(cursor, {
-                'sku': product['sku'],
-                'sku_name': sku_name,
-                'unit_price': product['price']
-            })
-            insert_line_item(cursor, {
-                'pick_ticket_num': f'C{order["orderNum"]}',
-                'line_num': line,
-                'units_to_ship': product['quantity'],
-                'quantity': product['quantity'],
-                'sku': product['sku']
-            })
+        insert_db(cursor, order)
+        export_order(order)
+        db_cnx.commit()
     except KeyError as e:
+        db_cnx.rollback()
+        return func.HttpResponse('Please make sure to include all attributes for the order model', status_code=400)
+    except ValueError as e:
+        db_cnx.rollback()
+        return func.HttpResponse(str(e), status_code=400)
+    except Exception as e:
         db_cnx.rollback()
         traceback = e.__traceback__
         while traceback:
             logging.error("{}: {}".format(traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
             traceback = traceback.tb_next
-        return func.HttpResponse('Please make sure to include all attributes for the order model', status_code=400)
+        return func.HttpResponse('There was an error processing your request, please contact administrator', status_code=500)
 
-    db_cnx.commit()
     return func.HttpResponse('Order submitted')
+
+def insert_db(cursor, order: dict) -> None:
+    """Inserts an order into the database
+
+    Insertion order:
+    1) Customer
+    2) Recipient
+    3) Order
+    4) Product
+    5) Line item
+
+    Args:
+        cursor: mysql.connection cursor used to interact with the database
+        order: dict containing order information
+
+    Raises:
+        ValueError: The SKU for a product could not be found
+    """
+    customer_id = insert_customer(cursor, {
+        'sold_to_name': order['customer']['name'],
+        'sold_to_address': order['customer']['address'],
+        'sold_to_city': order['customer']['city'],
+        'sold_to_state': order['customer']['state'],
+        'sold_to_country': order['customer']['country'],
+        'sold_to_zip': order['customer']['zip']
+    })
+    recipient_id = insert_recipient(cursor, {
+        'ship_to_name': order['recipient']['name'],
+        'ship_to_address': order['recipient']['address'],
+        'ship_to_city': order['recipient']['city'],
+        'ship_to_state': order['recipient']['state'],
+        'ship_to_country': order['recipient']['country'],
+        'ship_to_zip': order['recipient']['zip']
+    })
+    insert_order(cursor, {
+        'order_num': order['order_num'],
+        'sold_to': customer_id,
+        'ship_to': recipient_id,
+        'ship_method': order['shipping_method'],
+        'order_date': order['order_date']
+    })
+
+    line = 0
+    for product in order['products']:
+        line += 1
+        product_info = requests.get('https://ssapi.shipstation.com/products',
+                                    params={'sku': product['sku']},
+                                    headers={
+                                        'Authorization': os.environ['SS_CREDS']
+                                    })
+        product_info = product_info.json()
+
+        sku_name = ''
+        for ss_product in product_info['products']:
+            if ss_product['sku'] == product['sku']:
+                sku_name = ss_product['name']
+
+        if sku_name == '':
+            raise ValueError(f'The sku {product["sku"]} entered does not exist in ShipStation')
+
+        insert_product(cursor, {
+            'sku': product['sku'],
+            'sku_name': sku_name,
+            'unit_price': product['price']
+        })
+        insert_line_item(cursor, {
+            'pick_ticket_num': f'C{order["order_num"]}',
+            'line_num': line,
+            'units_to_ship': product['quantity'],
+            'quantity': product['quantity'],
+            'sku': product['sku']
+        })
 
 def insert_customer(cursor, customer: dict) -> int:
     """Adds a customer's information into the WSI database
@@ -239,3 +258,14 @@ def insert_line_item(cursor, line: dict) -> None:
     """
 
     cursor.execute(qry)
+
+def export_order(wsi_order: dict) -> None:
+    """Exports an order to BlobQueue to be SFTP to WSI
+
+    Args:
+        wsi_order: dict containing order information
+    """
+    blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'], container_name='wsi-orders', blob_name=f'{wsi_order["order_num"]}.txt')
+    order = Order()
+    order.from_dict(wsi_order)
+    blob.upload_blob(order.csv())
