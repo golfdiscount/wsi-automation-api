@@ -1,6 +1,7 @@
 """
 Creates a single order in the database and adds it to the blob storage container
 """
+
 import azure.functions as func
 import logging
 import mysql.connector as sql
@@ -8,7 +9,10 @@ import os
 import requests
 
 from azure.storage.blob import BlobClient
-from wsi import Order
+from datetime import datetime
+from io import StringIO
+from wsi.order import Order
+from wsi.pickticket import Pickticket
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     """Entry point of HTTP request
@@ -19,23 +23,23 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     Return:
         azure.functions.HttpResponse with status code indicating if insertion was successful
     """
-    try:
-        order: dict = req.get_json()
-    except ValueError:
-        return func.HttpResponse('Please submit order data in request', status_code=400)
-
     db_cnx: sql.MySQLConnection = sql.connect(
         user=os.environ['db_user'],
         password=os.environ['db_pass'],
         host=os.environ['db_host'],
         database=os.environ['db_database']
     )
-
     cursor = db_cnx.cursor()
+
     try:
-        insert_db(cursor, order)
-        export_order(order)
-        db_cnx.commit()
+        if req.headers['content-type'] != 'application/json':
+            ticket = Pickticket()
+            ticket.read_csv(StringIO(req.get_body().decode('utf-8')))
+            create_from_pt(ticket, cursor)
+        else:
+            order = Order()
+            order.from_dict(req.get_json())
+            create_from_order(order, cursor)
     except KeyError as e:
         db_cnx.rollback()
         return func.HttpResponse('Please make sure to include all attributes for the order model', status_code=400)
@@ -44,15 +48,27 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(str(e), status_code=400)
     except Exception as e:
         db_cnx.rollback()
+        logging.error(e)
         traceback = e.__traceback__
         while traceback:
             logging.error("{}: {}".format(traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
             traceback = traceback.tb_next
         return func.HttpResponse('There was an error processing your request, please contact administrator', status_code=500)
+    else:
+        db_cnx.commit()
     finally:
         db_cnx.close()
 
     return func.HttpResponse('Order submitted')
+
+def create_from_pt(ticket: Pickticket, cursor) -> None:
+    for order in ticket:
+        insert_db(cursor, order.to_dict())
+    export_ticket(ticket)
+
+def create_from_order(order: Order, cursor) -> None:
+    insert_db(cursor, order)
+    export_order(order)
 
 def insert_db(cursor, order: dict) -> None:
     """Inserts an order into the database
@@ -261,13 +277,33 @@ def insert_line_item(cursor, line: dict) -> None:
 
     cursor.execute(qry)
 
-def export_order(wsi_order: dict) -> None:
-    """Exports an order to BlobQueue to be SFTP to WSI
+def export_order(order: Order) -> None:
+    """Exports an order to a blob container to be SFTP to WSI
+
+    This should be used to export a singular order
 
     Args:
-        wsi_order: dict containing order information
+        order: Order to be exported
     """
-    blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'], container_name='wsi-orders', blob_name=f'{wsi_order["order_num"]}.txt')
-    order = Order()
-    order.from_dict(wsi_order)
-    blob.upload_blob(order.csv())
+    blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'],
+        container_name='wsi-orders',
+        blob_name=f'PT_WSI_{timestamp()}.txt')
+    blob.upload_blob(order.to_csv())
+
+def export_ticket(ticket: Pickticket) -> None:
+    """Exports a pick ticket to a blob container to be SFTP to WSI
+
+    This should be used to export a series of orders
+
+    Args:
+        ticket: Pickticket with orders to be exported
+    """
+
+    blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'],
+        container_name='wsi-orders',
+        blob_name=f'PT_WSI_{timestamp()}.txt')
+    blob.upload_blob(ticket.to_csv())
+
+def timestamp() -> str:
+    now = datetime.now()
+    return now.strftime('%m_%d_%Y_%H_%M_%S')
