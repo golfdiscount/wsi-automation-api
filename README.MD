@@ -13,7 +13,7 @@ are used in responses from the API and requests to the API.
 ```json
 {
   "order_num": "Order number",
-  "order_date": "Date of the order in ISO format (YYYY-MM-DD)",
+  "order_date": "Order date in mm-dd-yyyy format",
   "shipping_method": "FDXH or FXES or FX2D or FXSO",
   "customer": {
     "name": "Customer first and last name",
@@ -52,11 +52,10 @@ associatd with the order number in form of an order model in JSON format.
 ## POST
 
 ### /order
-POSTing to the `/order` route creates an order. To create an order, submit an order
-model as JSON in the request body. All attributes must be filled to create an order.
+POSTing to the `/order` route creates an order. To create a single order, submit order information following the order model as JSON in the request body. All attributes must be filled to create an order. When submitting JSON data, ensure that
+you include the `content-type` header of `application-json` so that request is processed correctly.
 
-After the order is POSTed and inserted into the database, it will immediately be
-queued to be uploaded to WSI's filesystem.
+To upload multiple orders, CSV contents must be present in the request body. The CSV contents must follow WSI's pick ticket header & detail format.
 
-The API will return a response with the order information returned in CSV format
-adhering to WSI's order format.
+After the order is POSTed and inserted into the database, it will be
+queued to be uploaded to WSI's filesystem. An Azure blob (binary large object) trigger will process the file and SFTP it to WSI's filesystem.
