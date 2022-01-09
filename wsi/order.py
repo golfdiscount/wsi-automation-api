@@ -207,3 +207,7 @@ class Order:
     def to_dict(self) -> dict:
         """Gets the dict of this order"""
         return self._order
+
+    def __repr__(self) -> str:
+        """Representation of order object for debugging"""
+        return f'<Order {self._order["order_num"]}>'
