@@ -7,6 +7,7 @@ pickticket, you can use:
 """
 import pandas
 
+from typing import Iterable
 from wsi.order import Order
 
 
@@ -42,3 +43,6 @@ class Pickticket:
             result += order.csv()
 
         return result
+
+    def __iter__(self) -> Iterable:
+        return self._orders
