@@ -132,5 +132,5 @@ local.settings.json
 *.csv
 
 .idea
-.vscode
+
 wsi/test.py
