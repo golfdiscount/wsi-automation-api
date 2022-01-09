@@ -113,25 +113,8 @@ def insert_db(cursor, order: dict) -> None:
 
     line = 0
     for product in order['products']:
-        line += 1
-        product_info = requests.get('https://ssapi.shipstation.com/products',
-                                    params={'sku': product['sku']},
-                                    headers={
-                                        'Authorization': os.environ['SS_CREDS']
-                                    })
-        product_info = product_info.json()
-
-        sku_name = ''
-        for ss_product in product_info['products']:
-            if ss_product['sku'] == product['sku']:
-                sku_name = ss_product['name']
-
-        if sku_name == '':
-            raise ValueError(f'The sku {product["sku"]} entered does not exist in ShipStation')
-
         insert_product(cursor, {
             'sku': product['sku'],
-            'sku_name': sku_name,
             'unit_price': product['price']
         })
         insert_line_item(cursor, {
@@ -241,11 +224,9 @@ def insert_product(cursor, product: dict) -> None:
     qry = f"""
     INSERT INTO product (
         sku,
-        sku_name,
         unit_price
     ) VALUES (
         "{product["sku"]}",
-        "{product["sku_name"]}",
         {product["unit_price"]}
     ) ON DUPLICATE KEY UPDATE last_used = CURRENT_TIMESTAMP;
     """
