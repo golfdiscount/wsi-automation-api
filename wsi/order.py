@@ -36,6 +36,7 @@ class Order:
     }
 
     def __init__(self) -> None:
+        """Creates a an order object"""
         self.order_num = None
         self._order = {}
 
@@ -77,13 +78,18 @@ class Order:
         self.from_df(order)
 
     def from_df(self, order: pandas.DataFrame):
+        """Populate order information from a DataFrame. This is primarily used when constructing picktickets.
+
+        Args:
+            order: DataFrame containing order information
+        """
         for i, record in order.iterrows():
             if record[0] == 'PTH':
-                self.parse_header_csv(record)
+                self._parse_header_csv(record)
             else:
-                self.parse_detail_csv(record)
+                self._parse_detail_csv(record)
 
-    def parse_header_csv(self, record: pandas.Series):
+    def _parse_header_csv(self, record: pandas.Series):
         """Parses a header record
 
         Args:
@@ -98,7 +104,7 @@ class Order:
             else:
                 self._order[field] = record[self._header_indices[field]]
 
-    def parse_detail_csv(self, record: pandas.Series):
+    def _parse_detail_csv(self, record: pandas.Series):
         """Parses a detail record
 
         Args:
@@ -114,7 +120,7 @@ class Order:
         else:
             self._order['products'].append(detail)
 
-    def csv(self) -> str:
+    def to_csv(self) -> str:
         """Generates the CSV record for this order"""
         csv = ''
         csv += self._generate_header_csv() + '\n' + self._generate_detail_csvs()
@@ -197,3 +203,7 @@ class Order:
 
             csvs += ','.join([str(entry) for entry in detail]) + '\n'
         return csvs
+
+    def to_dict(self) -> dict:
+        """Gets the dict of this order"""
+        return self._order
