@@ -36,13 +36,13 @@ class Pickticket:
     def size(self) -> int:
         return len(self._orders)
 
-    def csv(self) -> str:
+    def to_csv(self) -> str:
         result = ''
 
         for order in self._orders:
-            result += order.csv()
+            result += order.to_csv()
 
         return result
 
     def __iter__(self) -> Iterable:
-        return self._orders
+        return iter(self._orders)
