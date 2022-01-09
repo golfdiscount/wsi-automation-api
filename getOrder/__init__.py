@@ -21,8 +21,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     qry = f"""
     SELECT wsi_order.order_num AS "order_num",
-        wsi_order.`order_date`, 
-        wsi_order.ship_method, 
+        wsi_order.`order_date`,
+        wsi_order.ship_method,
         c.sold_to_name,
         c.sold_to_address,
         c.sold_to_city,
@@ -37,7 +37,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         r.ship_to_zip,
         line_item.line_num,
         product.sku,
-        product.sku_name,
         line_item.quantity,
         product.unit_price
     FROM wsi_order
