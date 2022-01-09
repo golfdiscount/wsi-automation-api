@@ -133,3 +133,4 @@ local.settings.json
 
 .idea
 .vscode
+wsi/test.py
