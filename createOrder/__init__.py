@@ -113,6 +113,7 @@ def insert_db(cursor, order: dict) -> None:
 
     line = 0
     for product in order['products']:
+        line += 1
         insert_product(cursor, {
             'sku': product['sku'],
             'unit_price': product['price']
