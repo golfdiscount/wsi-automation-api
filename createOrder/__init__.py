@@ -67,7 +67,7 @@ def create_from_pt(ticket: Pickticket, cursor) -> None:
     export_ticket(ticket)
 
 def create_from_order(order: Order, cursor) -> None:
-    insert_db(cursor, order)
+    insert_db(cursor, order.to_dict())
     export_order(order)
 
 def insert_db(cursor, order: dict) -> None:
@@ -208,7 +208,7 @@ def insert_order(cursor, order: dict) -> None:
         {order["sold_to"]},
         {order["ship_to"]},
         "{order["ship_method"]}",
-        "{order["order_date"]}"
+        STR_TO_DATE("{order["order_date"]}", "%m/%d/%Y")
     ) ON DUPLICATE KEY UPDATE last_updated = CURRENT_TIMESTAMP;
     """
 
