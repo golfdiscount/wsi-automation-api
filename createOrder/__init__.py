@@ -42,6 +42,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             create_from_order(order, cursor)
     except KeyError as e:
         db_cnx.rollback()
+        logging.error(f'Missing key {e} from request object')
         return func.HttpResponse('Please make sure to include all attributes for the order model', status_code=400)
     except ValueError as e:
         db_cnx.rollback()
