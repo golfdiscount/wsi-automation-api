@@ -6,11 +6,11 @@ import azure.functions as func
 import logging
 import mysql.connector as sql
 import os
-import requests
 
 from azure.storage.blob import BlobClient
 from datetime import datetime
 from io import StringIO
+from uuid import uuid4
 from wsi.order import Order
 from wsi.pickticket import Pickticket
 
@@ -43,7 +43,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     except KeyError as e:
         db_cnx.rollback()
         logging.error(f'Missing key {e} from request object')
-        return func.HttpResponse('Please make sure to include all attributes for the order model', status_code=400)
+        return func.HttpResponse('Please make sure to include all attributes for the order model and ensure correct headers are present', status_code=400)
     except ValueError as e:
         db_cnx.rollback()
         return func.HttpResponse(str(e), status_code=400)
@@ -270,7 +270,7 @@ def export_order(order: Order) -> None:
     """
     blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'],
         container_name='wsi-orders',
-        blob_name=f'PT_WSI_{timestamp()}.txt')
+        blob_name=str(uuid4()))
     blob.upload_blob(order.to_csv())
 
 def export_ticket(ticket: Pickticket) -> None:
@@ -284,9 +284,5 @@ def export_ticket(ticket: Pickticket) -> None:
 
     blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'],
         container_name='wsi-orders',
-        blob_name=f'PT_WSI_{timestamp()}.txt')
+        blob_name=str(uuid4()))
     blob.upload_blob(ticket.to_csv())
-
-def timestamp() -> str:
-    now = datetime.now()
-    return now.strftime('%m_%d_%Y_%H_%M_%S')
