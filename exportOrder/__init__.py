@@ -29,7 +29,8 @@ def main(blob: func.InputStream) -> None:
     with tempfile.TemporaryFile() as order_file:
         order_file.write(blob.read())
         order_file.seek(0)
-        sftp.putfo(order_file, f'/{os.environ["target"]}/PT_WSI_{date_string}.csv', confirm=False)
+        remote_path = os.path.join(os.environ["target"], f'PT_WSI_{date_string}.csv')
+        sftp.putfo(order_file, remote_path, confirm=False)
     logging.info('SFTP finished successfully')
 
     sftp.close()
