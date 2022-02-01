@@ -10,6 +10,7 @@ import os
 from azure.storage.blob import BlobClient
 from datetime import datetime
 from io import StringIO
+from typing import Union
 from uuid import uuid4
 from wsi.pickticket import Pickticket
 from wsi.order import Order
@@ -28,9 +29,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         if req.headers['content-type'] != 'application/json':
             ticket = Pickticket()
             ticket.read_csv(StringIO(req.get_body().decode('utf-8')))
+            export_ticket(ticket)
         else:
             order = Order()
             order.from_dict(req.get_json())
+            export_ticket(order)
     except KeyError as e:
         logging.error(f'Missing key {e} from request object')
         return func.HttpResponse('Please make sure to include all attributes for the order model and ensure correct headers are present', status_code=400)
@@ -39,20 +42,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse('Order submitted')
 
-def export_order(order: Order) -> None:
-    """Exports an order to a blob container to be SFTP to WSI
-
-    This should be used to export a singular order
-
-    Args:
-        order: Order to be exported
-    """
-    blob = BlobClient.from_connection_string(os.environ['AzureWebJobsStorage'],
-        container_name='wsi-orders',
-        blob_name=str(uuid4()))
-    blob.upload_blob(order.to_csv())
-
-def export_ticket(ticket: Pickticket) -> None:
+def export_ticket(ticket: Union[Order, Pickticket]) -> None:
     """Exports a pick ticket to a blob container to be SFTP to WSI
 
     This should be used to export a series of orders
