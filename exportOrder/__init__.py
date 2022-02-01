@@ -20,38 +20,36 @@ def main(blob: func.InputStream) -> None:
 
     logging.info(f'Processing {blob.name}')
 
-    ticket = Pickticket()
-    ticket.read_csv(blob.read())
+    with tempfile.TemporaryFile() as file:
+        file.write(blob.read())
+        file.seek(0)
 
-    db_cnx: sql.MySQLConnection = sql.connect(
-        user=os.environ['db_user'],
-        password=os.environ['db_pass'],
-        host=os.environ['db_host'],
-        database=os.environ['db_database']
-    )
-    cursor = db_cnx.cursor()
-    try:
-        for order in ticket:
-            insert_db(cursor, order)
-    except Exception as e:
-        db_cnx.rollback()
-        logging.error(e)
-        traceback = e.__traceback__
-        while traceback:
-            logging.error("{}: {}".format(traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
-            traceback = traceback.tb_next
-    else:
-        db_cnx.commit()
-    finally:
-        db_cnx.close()
+        ticket = Pickticket()
+        ticket.read_csv(file)
 
-    with tempfile.TemporaryFile() as order:
-        order.write(blob.read())
-        order.seek(0)
-        upload_sftp(order)
+        db_cnx: sql.MySQLConnection = sql.connect(
+            user=os.environ['db_user'],
+            password=os.environ['db_pass'],
+            host=os.environ['db_host'],
+            database=os.environ['db_database']
+        )
+        cursor = db_cnx.cursor()
 
-def upload_db():
-    pass
+        try:
+            for order in ticket:
+                insert_db(cursor, order.to_dict())
+            upload_sftp(file)
+        except Exception as e:
+            db_cnx.rollback()
+            logging.error(e)
+            traceback = e.__traceback__
+            while traceback:
+                logging.error("{}: {}".format(traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
+                traceback = traceback.tb_next
+        else:
+            db_cnx.commit()
+        finally:
+            db_cnx.close()
 
 def insert_db(cursor, order: dict) -> None:
     """Inserts an order into the database
