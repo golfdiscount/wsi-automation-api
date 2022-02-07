@@ -9,6 +9,8 @@ import os
 import paramiko as pm
 import tempfile
 
+from azure.identity import ClientSecretCredential
+from azure.keyvault.secrets import SecretClient
 from paramiko import AutoAddPolicy
 from paramiko.sftp_client import SFTPClient
 from wsi.pickticket import Pickticket
@@ -17,6 +19,12 @@ def main(blob: func.InputStream) -> None:
     """Processes a blob with order information and:
     1) Inserts into WSI database
     2) SFTPs to WSI"""
+    credential = ClientSecretCredential(
+        os.environ['AZURE_TENANT_ID'],
+        os.environ['AZURE_CLIENT_ID'],
+        os.environ['AZURE_CLIENT_SECRET']
+    )
+    secret_client = SecretClient(os.environ['keyvault_url'], credential)
 
     logging.info(f'Processing {blob.name}')
 
@@ -28,10 +36,10 @@ def main(blob: func.InputStream) -> None:
         ticket.read_csv(file)
 
         db_cnx: sql.MySQLConnection = sql.connect(
-            user=os.environ['db_user'],
-            password=os.environ['db_pass'],
-            host=os.environ['db_host'],
-            database=os.environ['db_database']
+            user = secret_client.get_secret('db-user').value,
+            password = secret_client.get_secret('db-pass').value,
+            host = secret_client.get_secret('db-host').value,
+            database = os.environ['db_database']
         )
         cursor = db_cnx.cursor()
 
@@ -241,7 +249,7 @@ def insert_line_item(cursor, line: dict) -> None:
 
     cursor.execute(qry)
 
-def upload_sftp(order: tempfile._TemporaryFileWrapper):
+def upload_sftp(order: tempfile._TemporaryFileWrapper, secret_client: SecretClient):
     """Uploads an order to WSI's file system in
     the directory specified by the "target"
     environment variable
@@ -253,9 +261,9 @@ def upload_sftp(order: tempfile._TemporaryFileWrapper):
         client.set_missing_host_key_policy(AutoAddPolicy())
 
         logging.info('Connecting to WSI server...')
-        client.connect(os.environ['WSI_HOST'],
-            username=os.environ['WSI_USER'],
-            password=os.environ['WSI_PASS'])
+        client.connect(secret_client.get_secret('wsi-host'),
+            username=secret_client.get_secret('wsi-user'),
+            password=secret_client.get_secret('wsi-pass'))
         logging.info('Connection successful')
 
         with SFTPClient.from_transport(client.get_transport()) as sftp:
