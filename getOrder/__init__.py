@@ -1,19 +1,29 @@
-import datetime
 import azure.functions as func
+import datetime
 import json
 import mysql.connector as sql
 import os
 
+from azure.identity import ClientSecretCredential
+from azure.keyvault.secrets import SecretClient
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
+    credential = ClientSecretCredential(
+        os.environ['AZURE_TENANT_ID'],
+        os.environ['AZURE_CLIENT_ID'],
+        os.environ['AZURE_CLIENT_SECRET']
+    )
+    secret_client = SecretClient(os.environ['keyvault_url'], credential)
+
     """Queries the database for the specified order number"""
     order_num = req.route_params.get('order_num')
     order_num = order_num.replace(';', '')
     order_num = order_num.replace('"', '')
 
     db: sql.MySQLConnection = sql.connect(
-        user = os.environ['db_user'],
-        password = os.environ['db_pass'],
-        host = os.environ['db_host'],
+        user = secret_client.get_secret('db-user').value,
+        password = secret_client.get_secret('db-pass').value,
+        host = secret_client.get_secret('db-host').value,
         database = os.environ['db_database']
     )
 
