@@ -47,7 +47,7 @@ def main(blob: func.InputStream) -> None:
             for order in ticket:
                 insert_db(cursor, order.to_dict())
             file.seek(0)
-            upload_sftp(file)
+            upload_sftp(file, secret_client)
         except Exception as e:
             db_cnx.rollback()
             logging.error(e)
