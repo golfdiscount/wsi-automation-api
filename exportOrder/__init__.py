@@ -261,9 +261,9 @@ def upload_sftp(order: tempfile._TemporaryFileWrapper, secret_client: SecretClie
         client.set_missing_host_key_policy(AutoAddPolicy())
 
         logging.info('Connecting to WSI server...')
-        client.connect(secret_client.get_secret('wsi-host'),
-            username=secret_client.get_secret('wsi-user'),
-            password=secret_client.get_secret('wsi-pass'))
+        client.connect(secret_client.get_secret('wsi-host').value,
+            username=secret_client.get_secret('wsi-user').value,
+            password=secret_client.get_secret('wsi-pass').value)
         logging.info('Connection successful')
 
         with SFTPClient.from_transport(client.get_transport()) as sftp:
