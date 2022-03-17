@@ -1,0 +1,11 @@
+{
+    "scriptFile": "__init__.py",
+    "bindings": [
+        {
+            "type": "blobTrigger",
+            "direction": "in",
+            "name": "blob",
+            "path": "wsi-pos/{name}"
+        }
+    ]
+}
