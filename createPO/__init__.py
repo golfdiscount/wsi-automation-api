@@ -5,7 +5,7 @@ import pandas as pd
 
 from azure.storage.blob import BlobClient
 
-def main(req: func.HttpRequest) -> None:
+def main(timer: func.TimerRequest) -> None:
     master: pd.DataFrame = pd.read_csv(os.environ['PO_MASTER_URL'])
     daily: pd.DataFrame = pd.read_csv(os.environ['PO_DAILY_URL'])
 
