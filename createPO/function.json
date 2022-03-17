@@ -1,0 +1,13 @@
+{
+    "scriptFile": "__init__.py",
+    "bindings": [
+        {
+            "schedule": "0 0 0 * * *",
+            "type": "httpTrigger",
+            "name": "req",
+            "direction": "in",
+            "methods": ["get"]
+        }
+
+    ]
+}
