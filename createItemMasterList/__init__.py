@@ -7,7 +7,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     
     db: sql.MySQLConnection = sql.connect(
         user = 'dbread',
-        password = os.environ['EAGLE_OASS'],
+        password = os.environ['EAGLE_PASS'],
         host = os.environ['EAGLE_HOST'],
         database = os.environ['EAGLE_DB']
     )
