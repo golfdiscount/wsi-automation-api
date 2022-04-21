@@ -35,7 +35,7 @@ def main(timer: func.TimerRequest) -> None:
         record += f'N,N,N,{sanitize(tokens[10])},{sanitize(tokens[11])}'
         record += ',' * 10 + '\n'
 
-        assert(record.count(',') == 50)
+        assert(record.count(',') == 51)
 
         f.write(bytes(record, 'utf-8'))
     
