@@ -33,7 +33,7 @@ def main(timer: func.TimerRequest) -> None:
         record += f'{sanitize(tokens[9])}'
         record += ',' * 4
         record += f'N,N,N,{sanitize(tokens[10])},{sanitize(tokens[11])}'
-        record += ',' * 9 + '\n'
+        record += ',' * 10 + '\n'
 
         assert(record.count(',') == 50)
 
