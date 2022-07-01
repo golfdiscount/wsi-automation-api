@@ -38,7 +38,7 @@ def main(timer: func.TimerRequest) -> None:
         assert(record.count(',') == 51)
 
         f.write(bytes(record, 'utf-8'))
-    
+
     f.seek(0)
     upload(f)
 
@@ -64,7 +64,7 @@ def upload(file):
 
             logging.info(f'Uploading {file_name} to {os.environ["target"]} directory')
             remote_path = os.path.join(os.environ['target'], file_name)
-            sftp.putfo(file, remote_path, confirm=True)
+            sftp.putfo(file, remote_path)
             logging.info('SFTP finished successfully')
 
 def sanitize(s: str) -> str:
@@ -75,4 +75,4 @@ def sanitize(s: str) -> str:
     s = s.replace('"', '')
     s = s.replace(',', '')
     s = s.strip()
-    return s 
+    return s
