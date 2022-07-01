@@ -38,9 +38,13 @@ def main(timer: func.TimerRequest) -> None:
         assert(record.count(',') == 51)
 
         f.write(bytes(record, 'utf-8'))
-    
+
     f.seek(0)
-    upload(f)
+
+    for line in f.readlines():
+        print(line)
+
+    # upload(f)
 
 def upload(file):
     credential = ClientSecretCredential(
@@ -75,4 +79,4 @@ def sanitize(s: str) -> str:
     s = s.replace('"', '')
     s = s.replace(',', '')
     s = s.strip()
-    return s 
+    return s
