@@ -65,7 +65,7 @@ class Order:
                 if key not in product:
                     raise KeyError(f'A product is missing key {key}')
 
-        self.order_num = order_info['order_num']
+        self.order_num = order_info['orderNumber']
         self._order = order_info
 
     def from_csv(self, csv):
@@ -187,7 +187,7 @@ class Order:
             line_num += 1
             detail = [''] * 27  # detail has 27 fields
             detail[0] = 'PTD'
-            detail[2] = 'C' + str(self._order['order_num'])
+            detail[2] = 'C' + str(self._order['orderNumber'])
             detail[3] = str(line_num)
             detail[1] = 'I'
             detail[4] = 'A'
@@ -210,4 +210,4 @@ class Order:
 
     def __repr__(self) -> str:
         """Representation of order object for debugging"""
-        return f'<Order {self._order["order_num"]}>'
+        return f'<Order {self._order["orderNumber"]}>'
