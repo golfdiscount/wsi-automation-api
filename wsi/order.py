@@ -8,8 +8,8 @@ import pandas
 
 class Order:
     _header_indices = {
-        'order_num': 3,
-        'order_date': 5,
+        'orderNumber': 3,
+        'orderDate': 5,
         'customer': {
             'name': 12,
             'address': 13,
@@ -26,7 +26,7 @@ class Order:
             'country': 23,
             'zip': 24
         },
-        'shipping_method': 32
+        'shippingMethod': 32
     }
 
     _detail_indices = {
@@ -49,7 +49,7 @@ class Order:
         Raises:
             KeyError: A required key is missing from the dict
         """
-        keys = ['order_num', 'order_date', 'shipping_method', 'customer', 'recipient', 'products']
+        keys = ['orderNumber', 'orderDate', 'shippingMethod', 'customer', 'recipient', 'products']
         for key in keys:
             if key not in order_info:
                 raise KeyError(f'Missing key {key} in order')
@@ -140,7 +140,7 @@ class Order:
         header = [''] * 62  # Header has 62 fields
         header[0] = 'PTH'
         header[1] = 'I'
-        header[2] = 'C' + str(self._order['order_num'])
+        header[2] = 'C' + str(self._order['orderNumber'])
         header[4] = 'C'
         header[9] = '75'
         header[35] = 'PGD'
@@ -151,7 +151,7 @@ class Order:
         header[49] = 'PT'
 
         for index in self._header_indices:
-            if index == 'order_date':
+            if index == 'orderDate':
                 try:  # Try to form date out of ISO format
                     order_date = datetime.date.fromisoformat(self._order[index])
                     header[self._header_indices[index]] = order_date.strftime('%m/%d/%Y')
