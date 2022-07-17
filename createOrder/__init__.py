@@ -26,7 +26,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     """
 
     try:
-        if req.headers['content-type'] != 'application/json':
+        if 'application/json' not in req.headers['content-type']:
             ticket = Pickticket()
             ticket.read_csv(StringIO(req.get_body().decode('utf-8')))
             export_ticket(ticket)
