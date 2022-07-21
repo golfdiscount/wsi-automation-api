@@ -94,11 +94,11 @@ def insert_db(cursor, order: dict) -> None:
         'ship_to_zip': order['recipient']['zip']
     })
     insert_order(cursor, {
-        'order_num': order['order_num'],
+        'order_num': order['orderNumber'],
         'sold_to': customer_id,
         'ship_to': recipient_id,
-        'ship_method': order['shipping_method'],
-        'order_date': order['order_date']
+        'ship_method': order['shippingMethod'],
+        'order_date': order['orderDate']
     })
 
     line = 0
@@ -109,7 +109,7 @@ def insert_db(cursor, order: dict) -> None:
             'unit_price': product['price']
         })
         insert_line_item(cursor, {
-            'pick_ticket_num': f'C{order["order_num"]}',
+            'pick_ticket_num': f'C{order["orderNumber"]}',
             'line_num': line,
             'units_to_ship': product['quantity'],
             'quantity': product['quantity'],
