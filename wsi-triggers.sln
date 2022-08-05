@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32630.192
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wsi-triggers", "wsi-triggers.csproj", "{596A82B2-929A-4C3C-B198-7F0413B459EB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{596A82B2-929A-4C3C-B198-7F0413B459EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{596A82B2-929A-4C3C-B198-7F0413B459EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{596A82B2-929A-4C3C-B198-7F0413B459EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{596A82B2-929A-4C3C-B198-7F0413B459EB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C72F66C0-3F5C-4D70-956C-73C628868C00}
+	EndGlobalSection
+EndGlobal
