@@ -11,23 +11,25 @@ using wsi_triggers.Models;
 
 namespace wsi_triggers
 {
-    public class Stores
+    public class GetStore
     {
         private readonly string cs;
 
-        public Stores(SqlConnectionStringBuilder builder)
+        public GetStore(SqlConnectionStringBuilder builder)
         {
             cs = builder.ConnectionString;
         }
 
-        [FunctionName("Stores")]
+        [FunctionName("GetStore")]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "stores")] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "stores/{id:int?}")] HttpRequest req,
+            int? id,
             ILogger log)
         {
             List<Store> stores = new();
             using SqlConnection conn = new(cs);
-            SqlCommand cmd = new(@"SELECT [address].[name],
+
+            string cmdText = @"SELECT [address].[name],
                     [address].[address],
                     [address].[city],
 	                [address].[state],
@@ -35,7 +37,21 @@ namespace wsi_triggers
 	                [address].[zip],
 	                [store].[store_number] AS [storeNumber]
                 FROM [store]
-                JOIN [address] ON[address].[id] = [store].[address];", conn);
+                JOIN [address] ON [address].[id] = [store].[address]";
+
+            if (id != null)
+            {
+                cmdText += " WHERE [store].[id] = @id";
+            }
+
+            cmdText += ";";
+            SqlCommand cmd = new(cmdText, conn);
+            
+            if (id != null)
+            {
+                cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
+            }
+
             conn.Open();
 
             using SqlDataReader reader = cmd.ExecuteReader();
@@ -53,6 +69,11 @@ namespace wsi_triggers
                 };
 
                 stores.Add(store);
+            }
+
+            if (stores.Count == 0)
+            {
+                return new NotFoundObjectResult(stores);
             }
 
             return new OkObjectResult(stores);
