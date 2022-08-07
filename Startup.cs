@@ -40,7 +40,7 @@ namespace wsi_triggers
                 Pooling = true,
                 MinPoolSize = 3,
                 InitialCatalog = "wsi",
-                Authentication = SqlAuthenticationMethod.ActiveDirectoryDefault
+                Authentication = SqlAuthenticationMethod.ActiveDirectoryManagedIdentity
             };
 
             builder.Services.AddSingleton(connectionBuilder);
