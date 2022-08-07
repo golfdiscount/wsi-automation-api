@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Blob Triggers\" />
+    <Folder Include="HTTP Triggers\POST\" />
     <Folder Include="Timer Triggers\" />
   </ItemGroup>
 </Project>
