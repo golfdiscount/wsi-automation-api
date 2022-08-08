@@ -36,6 +36,7 @@ namespace wsi_triggers
             SqlConnectionStringBuilder connectionBuilder = new()
             {
                 DataSource = host,
+                UserID = user,
                 Pooling = true,
                 MinPoolSize = 3,
                 InitialCatalog = "wsi",
