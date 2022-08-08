@@ -30,7 +30,7 @@ namespace wsi_triggers
             using SqlConnection conn = new(cs);
 
             string cmdText = @"SELECT [address].[name],
-                    [address].[address],
+                    [address].[street],
                     [address].[city],
 	                [address].[state],
 	                [address].[country],
