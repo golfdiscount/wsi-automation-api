@@ -20,23 +20,9 @@ namespace wsi_triggers
             KeyVaultSecret dbHost = secretClient.GetSecret("db-host");
             string host = dbHost.Value;
 
-            string user;
-
-            try
-            {
-                KeyVaultSecret dbUser = secretClient.GetSecret("db-user");
-
-                user = dbUser.Value;
-            } 
-            catch (Azure.RequestFailedException)
-            {
-                user = Environment.GetEnvironmentVariable("db-user");
-            }
-
             SqlConnectionStringBuilder connectionBuilder = new()
             {
                 DataSource = host,
-                UserID = user,
                 Pooling = true,
                 MinPoolSize = 3,
                 InitialCatalog = "wsi",
