@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
+using wsi_triggers.Data;
 using wsi_triggers.Models;
 
 namespace wsi_triggers.HTTP_Triggers
@@ -20,44 +19,19 @@ namespace wsi_triggers.HTTP_Triggers
         }
 
         [FunctionName("GetShippingMethod")]
-        public async Task<IActionResult> Run(
+        public IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "shipping/{id:int?}")] HttpRequest req,
             int? id,
             ILogger log)
         {
-            List<ShippingMethod> methods = new();
-            using SqlConnection conn = new(cs);
+            List<ShippingMethod> methods;
 
-            string cmdText = @"SELECT * FROM  [shipping_method]";
-
-            if (id != null)
+            if (id == null)
             {
-                cmdText += " WHERE [shipping_method].[id] = @id";
-            }
-
-            cmdText += ";";
-            SqlCommand cmd = new(cmdText, conn);
-
-            if (id != null)
+                methods = ShippingMethods.GetShippingMethods(cs);
+            } else
             {
-                cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
-            }
-
-            conn.Open();
-
-            using SqlDataReader reader = cmd.ExecuteReader();
-            while(reader.Read())
-            {
-                ShippingMethod method = new()
-                {
-                    Id = reader.GetInt32(0),
-                    Code = reader.GetString(1),
-                    Description = reader.GetString(2),
-                    Created_at = reader.GetDateTime(3),
-                    Updated_at = reader.GetDateTime(4)
-                };
-
-                methods.Add(method);
+                methods = ShippingMethods.GetShippingMethods((int)id, cs);
             }
 
             if (methods.Count == 0)

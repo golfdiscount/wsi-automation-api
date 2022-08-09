@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using wsi_triggers.Data;
 using wsi_triggers.Models;
 
 namespace wsi_triggers.HTTP_Triggers.GET
@@ -17,30 +17,44 @@ namespace wsi_triggers.HTTP_Triggers.GET
         {
             cs = builder.ConnectionString;
         }
+
         [FunctionName("GetOrder")]
-        public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "orders/{orderNumber:int?}")] HttpRequest req,
-            int? orderNumber,
+        public IActionResult Run(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "orders/{orderNumber}")] HttpRequest req,
+            string orderNumber,
             ILogger log)
         {
-            List<Order> orders = new List<Order>();
-            using SqlConnection conn = new(cs);
+            List<Order> orders = new();
 
-            string cmdText = @"SELECT * FROM [header]";
+            List<Header> headers = Headers.GetHeaders(orderNumber, cs);
 
-            if (orderNumber!= null)
+            headers.ForEach(header =>
             {
-                cmdText += " WHERE [header].[order_number] = @order_number";
+                Order order = new()
+                {
+                    PickticketNumber = header.PickticketNumber,
+                    OrderNumber = header.OrderNumber,
+                    Action = header.Action,
+                    Store = Stores.GetStore(header.Store, cs)[0],
+                    Customer = Addresses.GetAddress(header.Customer, cs)[0],
+                    Recipient = Addresses.GetAddress(header.Recipient, cs)[0],
+                    ShippingMethod = ShippingMethods.GetShippingMethods(header.ShippingMethod, cs)[0],
+                    LineItems = Details.GetDetails(header.PickticketNumber, cs),
+                    OrderDate = header.OrderDate,
+                    Channel = header.Channel,
+                    CreatedAt = header.CreatedAt,
+                    UpdatedAt = header.UpdatedAt
+                };
+
+                orders.Add(order);
+            });
+
+            if (orders.Count == 0)
+            {
+                return new NotFoundResult();
             }
 
-            SqlCommand cmd = new(cmdText, conn);
-
-            if (orderNumber != null)
-            {
-                cmd.Parameters.Add("@order_number", System.Data.SqlDbType.VarChar).Value = orderNumber;
-            }
-
-            return new OkObjectResult("hello");
+            return new OkObjectResult(orders);           
         }
     }
 }
