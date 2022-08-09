@@ -2,8 +2,9 @@
 
 namespace wsi_triggers.Models
 {
-    public class LineItem
+    public class Detail
     {
+        public string PickticketNumber { get; set; }
         public int LineNumber { get; set; }
         public char Action { get; set; }
         public string Sku { get; set; }
