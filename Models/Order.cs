@@ -11,11 +11,11 @@ namespace wsi_triggers.Models
         public Store Store { get; set; }
         public Address Customer { get; set; }
         public Address Recipient { get; set; }
-        public ShippingMethod Shipping_Method { get; set; }
-        public List<LineItem> LineItems { get; set; }
-        public DateOnly OrderDate { get; set; }
+        public ShippingMethod ShippingMethod { get; set; }
+        public List<Detail> LineItems { get; set; }
+        public DateTime OrderDate { get; set; }
         public int Channel { get; set; }
-        public DateTime Created_at { get; set; }
-        public DateTime Updated_at { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 }
