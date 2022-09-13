@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using wsi_triggers.Models.Address;
 
@@ -21,5 +22,18 @@ namespace wsi_triggers.Models.Order
 
         [Required]
         public DateTime OrderDate { get; set; }
+
+        [Required]
+        [MinLength(1)]
+        public List<PostLineItem> Products { get; set; }
+    }
+
+    public class PostLineItem
+    {
+        [Required]
+        public string Sku { get; set; }
+
+        [Required]
+        public int Quantity { get; set; }
     }
 }
