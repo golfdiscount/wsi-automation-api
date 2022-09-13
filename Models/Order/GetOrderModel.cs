@@ -8,6 +8,7 @@ namespace wsi_triggers.Models.Order
 {
     public class GetOrderModel : OrderModel
     {
+        public string PickticketNumber { get; set; }
         public char Action { get; set; }
         public StoreModel Store { get; set; }
         public AddressModel Customer { get; set; }
