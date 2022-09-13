@@ -56,10 +56,8 @@ namespace wsi_triggers.Data
             return headers;
         }
     
-        public static void InsertHeader(HeaderModel header, string cs)
+        public static void InsertHeader(HeaderModel header, SqlConnection conn)
         {
-            using SqlConnection conn = new(cs);
-            conn.Open();
             using SqlCommand cmd = new(Insert, conn);
 
             cmd.Parameters.Add("@pick_ticket_number", System.Data.SqlDbType.VarChar).Value = header.PickticketNumber;
