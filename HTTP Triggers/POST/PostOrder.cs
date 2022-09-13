@@ -24,7 +24,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
         }
 
         [FunctionName("PostOrder")]
-        public async Task<IActionResult> Run(
+        public IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] PostOrderModel order,
             ILogger log)
         {
