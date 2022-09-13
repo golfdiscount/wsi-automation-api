@@ -2,7 +2,7 @@
 
 namespace wsi_triggers.Models
 {
-    public class Header
+    public class HeaderModel
     {
         public string PickticketNumber { get; set; }
         public string OrderNumber { get; set; }
@@ -10,7 +10,7 @@ namespace wsi_triggers.Models
         public int Store { get; set; }
         public int Customer { get; set; }
         public int Recipient { get; set; }
-        public int ShippingMethod { get; set; }
+        public string ShippingMethod { get; set; }
         public DateTime OrderDate { get; set; }
         public int Channel { get; set; }
         public DateTime CreatedAt { get; set; }

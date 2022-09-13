@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using wsi_triggers.Data;
 using wsi_triggers.Models;
+using wsi_triggers.Models.Order;
 
 namespace wsi_triggers.HTTP_Triggers.GET
 {
@@ -24,13 +25,13 @@ namespace wsi_triggers.HTTP_Triggers.GET
             string orderNumber,
             ILogger log)
         {
-            List<Order> orders = new();
+            List<GetOrderModel> orders = new();
 
-            List<Header> headers = Headers.GetHeaders(orderNumber, cs);
+            List<HeaderModel> headers = Headers.GetHeaders(orderNumber, cs);
 
             headers.ForEach(header =>
             {
-                Order order = new()
+                GetOrderModel order = new()
                 {
                     PickticketNumber = header.PickticketNumber,
                     OrderNumber = header.OrderNumber,
@@ -38,7 +39,7 @@ namespace wsi_triggers.HTTP_Triggers.GET
                     Store = Stores.GetStore(header.Store, cs)[0],
                     Customer = Addresses.GetAddress(header.Customer, cs)[0],
                     Recipient = Addresses.GetAddress(header.Recipient, cs)[0],
-                    ShippingMethod = ShippingMethods.GetShippingMethods(header.ShippingMethod, cs)[0],
+                    ShippingMethod = ShippingMethods.GetBasicShippingMethod(header.ShippingMethod, cs),
                     LineItems = Details.GetDetails(header.PickticketNumber, cs),
                     OrderDate = header.OrderDate,
                     Channel = header.Channel,

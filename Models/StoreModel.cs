@@ -1,6 +1,6 @@
 ﻿namespace wsi_triggers.Models
 {
-    public class Store
+    public class StoreModel
     {
         public string Name { get; set; }
         public string Street{ get; set; }

@@ -25,7 +25,7 @@ namespace wsi_triggers
             int? id,
             ILogger log)
         {
-            List<Store> stores;
+            List<StoreModel> stores;
 
             if (id == null)
             {

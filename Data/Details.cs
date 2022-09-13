@@ -1,16 +1,16 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using wsi_triggers.Models;
+using wsi_triggers.Models.Detail;
 
 namespace wsi_triggers.Data
 {
     public static class Details
     {
         private static readonly string Select = @"SELECT * FROM [detail] WHERE [detail].[pick_ticket_number] = @number";
-        public static List<Detail> GetDetails(string pickticketNumber, string cs)
+        public static List<GetDetailModel> GetDetails(string pickticketNumber, string cs)
         {
             using SqlConnection conn = new(cs);
-            List<Detail> details = new();
+            List<GetDetailModel> details = new();
             conn.Open();
             using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.Add("@number", System.Data.SqlDbType.VarChar).Value = pickticketNumber;
@@ -28,7 +28,7 @@ namespace wsi_triggers.Data
 
             while (reader.Read())
             {
-                Detail detail = new()
+                GetDetailModel detail = new()
                 {
                     PickticketNumber = reader.GetString(pickticketIdx),
                     LineNumber = reader.GetInt32(lineNumberIdx),

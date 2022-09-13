@@ -1,17 +1,25 @@
-﻿using System;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace wsi_triggers.Models
+namespace wsi_triggers.Models.Address
 {
-    public class Address
+    public class AddressModel
     {
-        public int Id { get; set; }
+        [Required]
         public string Name { get; set; }
+
+        [Required]
         public string Street { get; set; }
+
+        [Required]
         public string City { get; set; }
+
+        [Required]
         public string State { get; set; }
+
+        [Required]
         public string Country { get; set; }
+
+        [Required]
         public string Zip { get; set; }
-        public DateTime Created_at { get; set; }
-        public DateTime Updated_at { get; set; }
     }
 }

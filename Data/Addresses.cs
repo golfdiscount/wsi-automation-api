@@ -1,17 +1,18 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using wsi_triggers.Models;
+using wsi_triggers.Models.Address;
 
 namespace wsi_triggers.Data
 {
     public static class Addresses
     {
         private static readonly string Select = @"SELECT * FROM [address] WHERE [address].[id] = @id";
+        private static readonly string Insert = @"INSERT INTO [address] (name, street, city, state, country, zip) VALUES (@name, @street, @city, @state, @country, @zip);";
 
-        public static List<Address> GetAddress(int id, string cs)
+        public static List<AddressModel> GetAddress(int id, string cs)
         {
             using SqlConnection conn = new(cs);
-            List<Address> addresses = new();
+            List<AddressModel> addresses = new();
             using SqlCommand cmd = new(Select, conn);
             conn.Open();
             cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
@@ -30,17 +31,14 @@ namespace wsi_triggers.Data
             
             while(reader.Read())
             {
-                Address address = new()
+                AddressModel address = new()
                 {
-                    Id = reader.GetInt32(idIdx),
                     Name = reader.GetString(nameIdx),
                     Street = reader.GetString(streetIdx),
                     City = reader.GetString(cityIdx),
                     State = reader.GetString(stateIdx),
                     Country = reader.GetString(countryIdx),
                     Zip = reader.GetString(zipIdx),
-                    Created_at = reader.GetDateTime(createdIdx),
-                    Updated_at = reader.GetDateTime(updatedIdx)
                 };
 
                 addresses.Add(address);
@@ -48,6 +46,25 @@ namespace wsi_triggers.Data
 
             conn.Close();
             return addresses;
+        }
+
+        public static int InsertAddress(AddressModel address, string cs)
+        {
+            using SqlConnection conn = new(cs);
+            using SqlCommand cmd = new(Insert, conn);
+            conn.Open();
+
+            cmd.Parameters.Add("@name", System.Data.SqlDbType.VarChar).Value = address.Name;
+            cmd.Parameters.Add("@street", System.Data.SqlDbType.VarChar).Value = address.Street;
+            cmd.Parameters.Add("@city", System.Data.SqlDbType.VarChar).Value = address.City;
+            cmd.Parameters.Add("@state", System.Data.SqlDbType.VarChar).Value = address.State;
+            cmd.Parameters.Add("@country", System.Data.SqlDbType.VarChar).Value = address.Country;
+            cmd.Parameters.Add("@zip", System.Data.SqlDbType.VarChar).Value = address.Zip;
+
+            cmd.ExecuteScalar();
+
+            conn.Close();
+            return 8;
         }
     }
 }

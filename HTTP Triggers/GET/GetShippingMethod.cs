@@ -6,7 +6,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using wsi_triggers.Data;
-using wsi_triggers.Models;
+using wsi_triggers.Models.ShippingMethod;
 
 namespace wsi_triggers.HTTP_Triggers
 {
@@ -20,25 +20,23 @@ namespace wsi_triggers.HTTP_Triggers
 
         [FunctionName("GetShippingMethod")]
         public IActionResult Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "shipping/{id:int?}")] HttpRequest req,
-            int? id,
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "shipping/{code:alpha?}")] HttpRequest req,
+            string? code,
             ILogger log)
         {
-            List<ShippingMethod> methods;
+            if (code != null)
+            {
+                GetShippingMethodModel method = ShippingMethods.GetShippingMethods(code, cs);
 
-            if (id == null)
-            {
-                methods = ShippingMethods.GetShippingMethods(cs);
-            } else
-            {
-                methods = ShippingMethods.GetShippingMethods((int)id, cs);
+                if (method == null)
+                {
+                    return new NotFoundResult();
+                }
+
+                return new OkObjectResult(method);
             }
 
-            if (methods.Count == 0)
-            {
-                return new NotFoundObjectResult(methods);
-            }
-
+            List<GetShippingMethodModel> methods = ShippingMethods.GetShippingMethods(cs);
             return new OkObjectResult(methods);
         }
     }

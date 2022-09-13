@@ -16,10 +16,10 @@ namespace wsi_triggers.Data
             FROM [store]
             JOIN [address] ON [address].[id] = [store].[address]";
 
-        public static List<Store> GetStore(string cs)
+        public static List<StoreModel> GetStore(string cs)
         {
             using SqlConnection conn = new(cs);
-            List<Store> stores = new();
+            List<StoreModel> stores = new();
 
             using SqlCommand cmd = new(Select, conn);
             conn.Open();
@@ -36,7 +36,7 @@ namespace wsi_triggers.Data
 
             while(reader.Read())
             {
-                Store store = new()
+                StoreModel store = new()
                 {
                     Name = reader.GetString(nameIdx),
                     Street = reader.GetString(streetIdx),
@@ -53,10 +53,10 @@ namespace wsi_triggers.Data
             return stores;
         }
 
-        public static List<Store> GetStore(int id, string cs)
+        public static List<StoreModel> GetStore(int id, string cs)
         {
             using SqlConnection conn = new(cs);
-            List<Store> stores = new();
+            List<StoreModel> stores = new();
             using SqlCommand cmd = new(Select + " WHERE [store].[id] = @id", conn);
             cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
             conn.Open();
@@ -73,7 +73,7 @@ namespace wsi_triggers.Data
 
             while (reader.Read())
             {
-                Store store = new()
+                StoreModel store = new()
                 {
                     Name = reader.GetString(nameIdx),
                     Street = reader.GetString(streetIdx),

@@ -7,11 +7,13 @@ namespace wsi_triggers.Data
     public static class Headers
     {
         private static readonly string Select = @"SELECT * FROM [header] WHERE [header].[order_number] = @number;";
+        private static readonly string Insert = @"INSERT INTO [header] (pick_ticket_number, order_number, store, customer, recipient, shipping_method, order_date, channel)
+            VALUES (@pick_ticket_number, @order_number, @store, @customer, @recipient, @shipping_method, @order_date, @channel);";
 
-        public static List<Header> GetHeaders(string orderNumber, string cs)
+        public static List<HeaderModel> GetHeaders(string orderNumber, string cs)
         {
             using SqlConnection conn = new(cs);
-            List<Header> headers = new();
+            List<HeaderModel> headers = new();
             conn.Open();
             using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.Add("@number", System.Data.SqlDbType.VarChar).Value = orderNumber;
@@ -33,7 +35,7 @@ namespace wsi_triggers.Data
 
             while (reader.Read())
             {
-                Header header = new()
+                HeaderModel header = new()
                 {
                     PickticketNumber = reader.GetString(pickticketNumberIdx),
                     OrderNumber = reader.GetString(orderNumberIdx),
@@ -41,7 +43,7 @@ namespace wsi_triggers.Data
                     Store = reader.GetInt32(storeIdx),
                     Customer = reader.GetInt32(customerIdx),
                     Recipient = reader.GetInt32(recipientIdx),
-                    ShippingMethod = reader.GetInt32(shippingMethodIdx),
+                    ShippingMethod = reader.GetString(shippingMethodIdx),
                     OrderDate = reader.GetDateTime(orderDateIdx),
                     Channel = reader.GetInt32(channelIdx),
                     CreatedAt = reader.GetDateTime(createdIdx),
@@ -52,6 +54,24 @@ namespace wsi_triggers.Data
             }
 
             return headers;
+        }
+    
+        public static void InsertHeader(HeaderModel header, string cs)
+        {
+            using SqlConnection conn = new(cs);
+            conn.Open();
+            using SqlCommand cmd = new(Insert, conn);
+
+            cmd.Parameters.Add("@pick_ticket_number", System.Data.SqlDbType.VarChar).Value = header.PickticketNumber;
+            cmd.Parameters.Add("@order_number", System.Data.SqlDbType.VarChar).Value = header.OrderNumber;
+            cmd.Parameters.Add("@store", System.Data.SqlDbType.Int).Value = header.Store;
+            cmd.Parameters.Add("@customer", System.Data.SqlDbType.Int).Value = header.Customer;
+            cmd.Parameters.Add("@recipient", System.Data.SqlDbType.Int).Value = header.Recipient;
+            cmd.Parameters.Add("@shipping_method", System.Data.SqlDbType.VarChar).Value = header.ShippingMethod;
+            cmd.Parameters.Add("@order_date", System.Data.SqlDbType.Date).Value = header.OrderDate;
+            cmd.Parameters.Add("@channel", System.Data.SqlDbType.Int).Value = header.Channel;
+
+            cmd.ExecuteScalar();
         }
     }
 }
