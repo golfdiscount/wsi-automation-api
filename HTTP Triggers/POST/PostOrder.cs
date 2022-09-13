@@ -1,16 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using wsi_triggers.Data;
 using wsi_triggers.Models.Order;
 using Microsoft.Data.SqlClient;
 using wsi_triggers.Models;
+using wsi_triggers.Models.Detail;
 
 namespace wsi_triggers.HTTP_Triggers.POST
 {    
@@ -35,28 +35,62 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 return new BadRequestObjectResult(validationResult.ErrorMessage);
             }
 
-            int customerId = Addresses.InsertAddress(order.Customer, cs);
-            int recipientId = Addresses.InsertAddress(order.Recipient, cs);
+            using SqlConnection conn = new(cs);
+            conn.Open();
 
-            HeaderModel header = new()
+            SqlCommand cmd = new("BEGIN TRANSACTION;", conn);
+            cmd.ExecuteNonQuery();
+
+            try
             {
-                PickticketNumber = "C" + order.OrderNumber,
-                OrderNumber = order.OrderNumber,
-                Action = 'I',
-                Store = order.Store,
-                Customer = customerId,
-                Recipient = recipientId,
-                ShippingMethod = order.ShippingMethod,
-                OrderDate = order.OrderDate,
-                Channel = 2
-            };
+                int customerId = Addresses.InsertAddress(order.Customer, conn);
+                int recipientId = Addresses.InsertAddress(order.Recipient, conn);
 
-            Headers.InsertHeader(header, cs);
+                HeaderModel header = new()
+                {
+                    PickticketNumber = "C" + order.OrderNumber,
+                    OrderNumber = order.OrderNumber,
+                    Action = 'I',
+                    Store = order.Store,
+                    Customer = customerId,
+                    Recipient = recipientId,
+                    ShippingMethod = order.ShippingMethod,
+                    OrderDate = order.OrderDate,
+                    Channel = 2
+                };
 
+                Headers.InsertHeader(header, conn);
+
+                int productCount = 1;
+                order.Products.ForEach(product =>
+                {
+                    DetailModel detail = new()
+                    {
+                        PickticketNumber = header.PickticketNumber,
+                        Action = 'I',
+                        LineNumber = productCount,
+                        Sku = product.Sku,
+                        Units = product.Quantity,
+                        UnitsToShip = product.Quantity
+                    };
+
+                    Details.InsertDetail(detail, conn);
+                    productCount++;
+                });
+            } catch (Exception e)
+            {
+                log.LogError(e.Message);
+                cmd.CommandText = "ROLLBACK;";
+                cmd.ExecuteNonQuery();
+                return new StatusCodeResult(500);
+            }
+
+            cmd.CommandText = "COMMIT;";
+            cmd.ExecuteNonQuery();
             return new CreatedResult("", order);
         }
 
-        private ValidationResult ValidateOrder(PostOrderModel order)
+        private static ValidationResult ValidateOrder(PostOrderModel order)
         {
             ValidationContext validationContext = new(order);
             List<ValidationResult> results = new();
