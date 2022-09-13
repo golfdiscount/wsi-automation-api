@@ -7,6 +7,8 @@ namespace wsi_triggers.Data
     public static class Details
     {
         private static readonly string Select = @"SELECT * FROM [detail] WHERE [detail].[pick_ticket_number] = @number";
+        private static readonly string Insert = @"INSERT INTO [detail] (pick_ticket_number, line_number, action, sku, units, units_to_ship)
+            VALUES (@pick_ticket_number, @line_number, @action, @sku, @quantity, @units_to_ship);";
         public static List<GetDetailModel> GetDetails(string pickticketNumber, string cs)
         {
             using SqlConnection conn = new(cs);
@@ -44,6 +46,20 @@ namespace wsi_triggers.Data
             }
 
             return details;
+        }
+
+        public static void InsertDetail(DetailModel detail, SqlConnection conn)
+        {
+            using SqlCommand cmd = new(Insert, conn);
+
+            cmd.Parameters.AddWithValue("@pick_ticket_number", detail.PickticketNumber);
+            cmd.Parameters.AddWithValue("@line_number", detail.LineNumber);
+            cmd.Parameters.AddWithValue("@sku", detail.Sku);
+            cmd.Parameters.AddWithValue("@action", detail.Action);
+            cmd.Parameters.AddWithValue("@quantity", detail.Units);
+            cmd.Parameters.AddWithValue("@units_to_ship", detail.UnitsToShip);
+
+            cmd.ExecuteScalar();
         }
     }
 }
