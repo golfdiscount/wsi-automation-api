@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using wsi_triggers.Models.Address;
 
@@ -7,7 +8,9 @@ namespace wsi_triggers.Data
     public static class Addresses
     {
         private static readonly string Select = @"SELECT * FROM [address] WHERE [address].[id] = @id";
-        private static readonly string Insert = @"INSERT INTO [address] (name, street, city, state, country, zip) VALUES (@name, @street, @city, @state, @country, @zip);";
+        private static readonly string Insert = @"INSERT INTO [address] (name, street, city, state, country, zip)
+            VALUES (@name, @street, @city, @state, @country, @zip);
+            SELECT CONVERT(INT, SCOPE_IDENTITY());";
 
         public static List<AddressModel> GetAddress(int id, string cs)
         {
@@ -48,11 +51,9 @@ namespace wsi_triggers.Data
             return addresses;
         }
 
-        public static int InsertAddress(AddressModel address, string cs)
+        public static int InsertAddress(AddressModel address, SqlConnection conn)
         {
-            using SqlConnection conn = new(cs);
             using SqlCommand cmd = new(Insert, conn);
-            conn.Open();
 
             cmd.Parameters.Add("@name", System.Data.SqlDbType.VarChar).Value = address.Name;
             cmd.Parameters.Add("@street", System.Data.SqlDbType.VarChar).Value = address.Street;
@@ -61,10 +62,9 @@ namespace wsi_triggers.Data
             cmd.Parameters.Add("@country", System.Data.SqlDbType.VarChar).Value = address.Country;
             cmd.Parameters.Add("@zip", System.Data.SqlDbType.VarChar).Value = address.Zip;
 
-            cmd.ExecuteScalar();
-
-            conn.Close();
-            return 8;
+            object result = cmd.ExecuteScalar();
+            int insertId = (Int32)result;
+            return insertId;
         }
     }
 }
