@@ -4,8 +4,6 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 [assembly: FunctionsStartup(typeof(wsi_triggers.Startup))]
 
