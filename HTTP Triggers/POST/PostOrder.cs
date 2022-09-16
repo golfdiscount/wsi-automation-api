@@ -1,14 +1,14 @@
+using Azure.Storage.Queues;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using System.ComponentModel.DataAnnotations;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using wsi_triggers.Data;
 using wsi_triggers.Models.Order;
-using Microsoft.Data.SqlClient;
 using wsi_triggers.Models;
 using wsi_triggers.Models.Detail;
 
@@ -87,6 +87,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
 
             cmd.CommandText = "COMMIT;";
             cmd.ExecuteNonQuery();
+            QueueOrderCsvCreation(order.OrderNumber);
             return new CreatedResult("", order);
         }
 
@@ -118,6 +119,14 @@ namespace wsi_triggers.HTTP_Triggers.POST
             }
 
             return null;
+        }
+    
+        private static void QueueOrderCsvCreation(string orderNumber)
+        {
+            byte[] messageBytes = System.Text.Encoding.UTF8.GetBytes(orderNumber);
+            string queueMessage = Convert.ToBase64String(messageBytes);
+            QueueClient queue = new(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "order-csv-creation");
+            queue.SendMessage(queueMessage);
         }
     }
 }
