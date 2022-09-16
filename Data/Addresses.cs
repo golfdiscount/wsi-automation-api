@@ -12,12 +12,14 @@ namespace wsi_triggers.Data
             VALUES (@name, @street, @city, @state, @country, @zip);
             SELECT CONVERT(INT, SCOPE_IDENTITY());";
 
-        public static List<AddressModel> GetAddress(int id, string cs)
+        public static AddressModel GetAddress(int id, SqlConnection conn)
         {
-            using SqlConnection conn = new(cs);
-            List<AddressModel> addresses = new();
+            if (conn.State == System.Data.ConnectionState.Closed)
+            {
+                conn.Open();
+            }
+
             using SqlCommand cmd = new(Select, conn);
-            conn.Open();
             cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
 
             using SqlDataReader reader = cmd.ExecuteReader();
@@ -31,24 +33,21 @@ namespace wsi_triggers.Data
             int zipIdx = reader.GetOrdinal("zip");
             int createdIdx = reader.GetOrdinal("created_at");
             int updatedIdx = reader.GetOrdinal("updated_at");
-            
-            while(reader.Read())
-            {
-                AddressModel address = new()
-                {
-                    Name = reader.GetString(nameIdx),
-                    Street = reader.GetString(streetIdx),
-                    City = reader.GetString(cityIdx),
-                    State = reader.GetString(stateIdx),
-                    Country = reader.GetString(countryIdx),
-                    Zip = reader.GetString(zipIdx),
-                };
 
-                addresses.Add(address);
-            }
+            reader.Read();
+            
+            AddressModel address = new()
+            {
+                Name = reader.GetString(nameIdx),
+                Street = reader.GetString(streetIdx),
+                City = reader.GetString(cityIdx),
+                State = reader.GetString(stateIdx),
+                Country = reader.GetString(countryIdx),
+                Zip = reader.GetString(zipIdx),
+            };
 
             conn.Close();
-            return addresses;
+            return address;
         }
 
         public static int InsertAddress(AddressModel address, SqlConnection conn)
