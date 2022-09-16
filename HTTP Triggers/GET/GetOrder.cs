@@ -25,37 +25,33 @@ namespace wsi_triggers.HTTP_Triggers.GET
             string orderNumber,
             ILogger log)
         {
-            List<GetOrderModel> orders = new();
+            log.LogInformation($"Searching database for order {orderNumber}");
+            using SqlConnection conn = new(cs);
 
-            List<HeaderModel> headers = Headers.GetHeaders(orderNumber, cs);
+            HeaderModel header = Headers.GetHeader(orderNumber, conn);
 
-            headers.ForEach(header =>
-            {
-                GetOrderModel order = new()
-                {
-                    PickticketNumber = header.PickticketNumber,
-                    OrderNumber = header.OrderNumber,
-                    Action = header.Action,
-                    Store = Stores.GetStore(header.Store, cs)[0],
-                    Customer = Addresses.GetAddress(header.Customer, cs)[0],
-                    Recipient = Addresses.GetAddress(header.Recipient, cs)[0],
-                    ShippingMethod = ShippingMethods.GetBasicShippingMethod(header.ShippingMethod, cs),
-                    LineItems = Details.GetDetails(header.PickticketNumber, cs),
-                    OrderDate = header.OrderDate,
-                    Channel = header.Channel,
-                    CreatedAt = header.CreatedAt,
-                    UpdatedAt = header.UpdatedAt
-                };
-
-                orders.Add(order);
-            });
-
-            if (orders.Count == 0)
+            if (header == null)
             {
                 return new NotFoundResult();
             }
 
-            return new OkObjectResult(orders);           
+            GetOrderModel order = new()
+            {
+                PickticketNumber = header.PickticketNumber,
+                OrderNumber = header.OrderNumber,
+                Action = header.Action,
+                Store = Stores.GetStore(header.Store, cs)[0],
+                Customer = Addresses.GetAddress(header.Customer, conn),
+                Recipient = Addresses.GetAddress(header.Recipient, conn),
+                ShippingMethod = ShippingMethods.GetBasicShippingMethod(header.ShippingMethod, cs),
+                LineItems = Details.GetDetails(header.PickticketNumber, cs),
+                OrderDate = header.OrderDate,
+                Channel = header.Channel,
+                CreatedAt = header.CreatedAt,
+                UpdatedAt = header.UpdatedAt
+            };
+
+            return new OkObjectResult(order);           
         }
     }
 }
