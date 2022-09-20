@@ -44,7 +44,7 @@ namespace wsi_triggers.HTTP_Triggers.GET
                 Customer = Addresses.GetAddress(header.Customer, conn),
                 Recipient = Addresses.GetAddress(header.Recipient, conn),
                 ShippingMethod = ShippingMethods.GetBasicShippingMethod(header.ShippingMethod, cs),
-                LineItems = Details.GetDetails(header.PickticketNumber, cs),
+                LineItems = Details.GetDetails(header.PickticketNumber, conn),
                 OrderDate = header.OrderDate,
                 Channel = header.Channel,
                 CreatedAt = header.CreatedAt,
