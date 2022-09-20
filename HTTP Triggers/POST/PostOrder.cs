@@ -7,7 +7,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using wsi_triggers.Data;
@@ -22,7 +21,6 @@ namespace wsi_triggers.HTTP_Triggers.POST
     {
         private readonly string cs;
         private readonly JsonSerializerOptions jsonOptions;
-        private readonly ILogger logger;
 
         public PostOrder(SqlConnectionStringBuilder builder, JsonSerializerOptions jsonOptions)
         {
@@ -31,14 +29,14 @@ namespace wsi_triggers.HTTP_Triggers.POST
         }
 
         [FunctionName("PostOrder")]
-        public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, ILogger logger)
+        public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, 
+            ILogger logger)
         {
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd();
 
             if (req.ContentType == "application/json")
             {
-                
                 try
                 {
                     PostOrderModel order = JsonSerializer.Deserialize<PostOrderModel>(requestContents, jsonOptions);
@@ -117,9 +115,8 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 cmd.CommandText = "COMMIT;";
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                logger.LogError(e.Message);
                 cmd.CommandText = "ROLLBACK;";
                 cmd.ExecuteNonQuery();
                 throw;
