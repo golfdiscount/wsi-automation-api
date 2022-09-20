@@ -1,4 +1,5 @@
 using Azure.Storage.Queues;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -7,32 +8,67 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using wsi_triggers.Data;
 using wsi_triggers.Models.Order;
 using wsi_triggers.Models;
 using wsi_triggers.Models.Detail;
+using System.Web.Http;
 
 namespace wsi_triggers.HTTP_Triggers.POST
 {    
     public class PostOrder
     {
         private readonly string cs;
+        private readonly JsonSerializerOptions jsonOptions;
+        private readonly ILogger logger;
 
-        public PostOrder(SqlConnectionStringBuilder builder)
+        public PostOrder(SqlConnectionStringBuilder builder, JsonSerializerOptions jsonOptions)
         {
             cs = builder.ConnectionString;
+            this.jsonOptions = jsonOptions;
         }
 
         [FunctionName("PostOrder")]
-        public IActionResult Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] PostOrderModel order,
-            ILogger log)
+        public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, ILogger logger)
         {
-            ValidationResult validationResult = ValidateOrder(order);
+            StreamReader reader = new(req.Body);
+            string requestContents = reader.ReadToEnd();
 
-            if (validationResult != null)
+            if (req.ContentType == "application/json")
             {
-                return new BadRequestObjectResult(validationResult.ErrorMessage);
+                
+                try
+                {
+                    PostOrderModel order = JsonSerializer.Deserialize<PostOrderModel>(requestContents, jsonOptions);
+                    InsertOrder(order);
+                    return new CreatedResult("", order);
+                } catch (ValidationException e)
+                {
+                    logger.LogWarning(e.ValidationResult.ErrorMessage);
+                    return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
+                } catch (Exception e)
+                {
+                    logger.LogCritical(e.Message);
+                    throw;
+                }
+            } else if (req.ContentType == "text/csv")
+            {
+                throw new NotImplementedException();
+            }
+
+            return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
+        }
+
+        private void InsertOrder(PostOrderModel order)
+        {
+            try
+            {
+                ValidateOrder(order);
+            } catch (ValidationException)
+            {
+                throw;
             }
 
             using SqlConnection conn = new(cs);
@@ -61,9 +97,10 @@ namespace wsi_triggers.HTTP_Triggers.POST
 
                 Headers.InsertHeader(header, conn);
 
-                int productCount = 1;
+                int productCount = 0;
                 order.Products.ForEach(product =>
                 {
+                    productCount++;
                     DetailModel detail = new()
                     {
                         PickticketNumber = header.PickticketNumber,
@@ -73,52 +110,32 @@ namespace wsi_triggers.HTTP_Triggers.POST
                         Units = product.Quantity,
                         UnitsToShip = product.Quantity
                     };
-
                     Details.InsertDetail(detail, conn);
-                    productCount++;
                 });
-            } catch (Exception e)
+
+                QueueOrderCsvCreation(order.OrderNumber);
+                cmd.CommandText = "COMMIT;";
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception e)
             {
-                log.LogError(e.Message);
+                logger.LogError(e.Message);
                 cmd.CommandText = "ROLLBACK;";
                 cmd.ExecuteNonQuery();
-                return new StatusCodeResult(500);
+                throw;
             }
-
-            cmd.CommandText = "COMMIT;";
-            cmd.ExecuteNonQuery();
-            QueueOrderCsvCreation(order.OrderNumber);
-            return new CreatedResult("", order);
         }
 
-        private static ValidationResult ValidateOrder(PostOrderModel order)
+        private static void ValidateOrder(PostOrderModel order)
         {
             ValidationContext validationContext = new(order);
-            List<ValidationResult> results = new();
-            bool valid = Validator.TryValidateObject(order, validationContext, results, true);
-
-            if (!valid)
-            {
-                return results[0];
-            }
+            Validator.ValidateObject(order, validationContext, true);
 
             validationContext = new(order.Customer);
-            valid = Validator.TryValidateObject(order.Customer, validationContext, results, true);
-
-            if (!valid)
-            {
-                return results[0];
-            }
+            Validator.ValidateObject(order.Customer, validationContext, true);
 
             validationContext = new(order.Recipient);
-            valid = Validator.TryValidateObject(order.Recipient, validationContext, results, true);
-
-            if (!valid)
-            {
-                return results[0];
-            }
-
-            return null;
+            Validator.ValidateObject(order.Recipient, validationContext, true);
         }
     
         private static void QueueOrderCsvCreation(string orderNumber)
