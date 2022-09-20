@@ -44,7 +44,7 @@ namespace wsi_triggers.Data
             {
                 PickticketNumber = reader.GetString(pickticketNumberIdx),
                 OrderNumber = reader.GetString(orderNumberIdx),
-                Action = reader.GetChar(actionIdx),
+                Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
                 Store = reader.GetInt32(storeIdx),
                 Customer = reader.GetInt32(customerIdx),
                 Recipient = reader.GetInt32(recipientIdx),
