@@ -9,11 +9,15 @@ namespace wsi_triggers.Data
         private static readonly string Select = @"SELECT * FROM [detail] WHERE [detail].[pick_ticket_number] = @number";
         private static readonly string Insert = @"INSERT INTO [detail] (pick_ticket_number, line_number, action, sku, units, units_to_ship)
             VALUES (@pick_ticket_number, @line_number, @action, @sku, @quantity, @units_to_ship);";
-        public static List<GetDetailModel> GetDetails(string pickticketNumber, string cs)
+        public static List<GetDetailModel> GetDetails(string pickticketNumber, SqlConnection conn)
         {
-            using SqlConnection conn = new(cs);
             List<GetDetailModel> details = new();
-            conn.Open();
+
+            if (conn.State != System.Data.ConnectionState.Open)
+            {
+                conn.Open();
+            }
+
             using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.Add("@number", System.Data.SqlDbType.VarChar).Value = pickticketNumber;
 
