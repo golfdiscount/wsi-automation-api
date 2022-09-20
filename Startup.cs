@@ -3,7 +3,9 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 using System;
+using System.Text.Json;
 
 [assembly: FunctionsStartup(typeof(wsi_triggers.Startup))]
 
@@ -29,7 +31,22 @@ namespace wsi_triggers
                 Authentication = SqlAuthenticationMethod.ActiveDirectoryDefault
             };
 
+            JsonSerializerOptions jsonOptions = new()
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            builder.Services.AddSingleton(jsonOptions);
             builder.Services.AddSingleton(connectionBuilder);
+            builder.Services.AddHttpClient("magento", config =>
+            {
+                KeyVaultSecret magentoUri = secretClient.GetSecret("magento-uri");
+                KeyVaultSecret magentoKey = secretClient.GetSecret("magento-key");
+
+                config.BaseAddress = new(magentoUri.Value);
+                config.DefaultRequestHeaders.Add("x-functions-key", magentoKey.Value);
+            });
         }
     }
 }
