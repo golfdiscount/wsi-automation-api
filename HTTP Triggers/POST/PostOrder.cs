@@ -15,6 +15,7 @@ using wsi_triggers.Data;
 using wsi_triggers.Models.Order;
 using wsi_triggers.Models;
 using wsi_triggers.Models.Detail;
+using Azure.Storage.Blobs;
 
 namespace wsi_triggers.HTTP_Triggers.POST
 {    
@@ -31,10 +32,10 @@ namespace wsi_triggers.HTTP_Triggers.POST
 
         [FunctionName("PostOrder")]
         public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, 
-            ILogger logger)
+            ILogger log)
         {
             StreamReader reader = new(req.Body);
-            string requestContents = reader.ReadToEnd();
+            string requestContents = reader.ReadToEnd().Trim();
 
             if (req.ContentType == "application/json")
             {
@@ -42,14 +43,15 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 {
                     PostOrderModel order = JsonSerializer.Deserialize<PostOrderModel>(requestContents, jsonOptions);
                     InsertOrder(order);
+                    QueueOrderCsvCreation(order.OrderNumber);
                     return new CreatedResult("", order);
                 } catch (ValidationException e)
                 {
-                    logger.LogWarning(e.ValidationResult.ErrorMessage);
+                    log.LogWarning(e.ValidationResult.ErrorMessage);
                     return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
                 } catch (Exception e)
                 {
-                    logger.LogCritical(e.Message);
+                    log.LogCritical(e.Message);
                     throw;
                 }
             } 
@@ -67,11 +69,13 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     if (!orders.ContainsKey(pickticketNum))
                     {
                         orders.Add(pickticketNum, new());
+                        orders[pickticketNum].Products = new();
                     }
+
+                    PostOrderModel order = orders[pickticketNum];
 
                     if (recordType == "PTH")
                     {
-                        PostOrderModel order = orders[pickticketNum];
                         order.OrderNumber = fields[3];
                         order.OrderDate = DateTime.ParseExact(fields[5], "MM/dd/yyyy", null);
                         order.Customer = new()
@@ -96,11 +100,35 @@ namespace wsi_triggers.HTTP_Triggers.POST
                         order.Store = 1;
                     } else if (recordType == "PTD")
                     {
-
+                        order.Products.Add(new()
+                        {
+                            Sku = fields[5],
+                            Quantity = int.Parse(fields[10])
+                        });
                     }
                 }
 
-                throw new NotImplementedException();
+                try
+                {
+                    foreach (var order in orders)
+                    {
+                        log.LogInformation($"Inserting {order.Value.OrderNumber} into the database");
+                        InsertOrder(order.Value);   
+                    }
+
+                    QueueCsvSftp(requestContents);
+                } catch (ValidationException e)
+                {
+                    log.LogWarning(e.ValidationResult.ErrorMessage);
+                    return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
+                } catch (Exception e)
+                {
+                    log.LogCritical(e.Message);
+                    throw;
+                }
+
+                return new StatusCodeResult(201);
+
             }
 
             return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
@@ -158,7 +186,6 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     Details.InsertDetail(detail, conn);
                 });
 
-                QueueOrderCsvCreation(order.OrderNumber);
                 cmd.CommandText = "COMMIT;";
                 cmd.ExecuteNonQuery();
             }
@@ -188,6 +215,14 @@ namespace wsi_triggers.HTTP_Triggers.POST
             string queueMessage = Convert.ToBase64String(messageBytes);
             QueueClient queue = new(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "order-csv-creation");
             queue.SendMessage(queueMessage);
+        }
+
+        private static void QueueCsvSftp(string csv)
+        {
+            BinaryData csvContents = new(csv);
+            string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
+            BlobClient client = new(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "sftp", fileName);
+            client.Upload(csvContents);
         }
     }
 }
