@@ -21,7 +21,7 @@ namespace wsi_triggers.Blob_Triggers
             sftp.Connect();
             try
             {
-                sftp.UploadFile(blob, $"{Environment.GetEnvironmentVariable("SftpTarget")}/{name}");
+                sftp.UploadFile(blob, $"{Environment.GetEnvironmentVariable("SFTP_ROOT")}/{name}");
             } catch(Exception e)
             {
                 log.LogInformation(e.Message);

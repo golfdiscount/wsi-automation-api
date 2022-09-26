@@ -16,7 +16,7 @@ namespace wsi_triggers
         public override void Configure(IFunctionsHostBuilder builder)
         {
             DefaultAzureCredential creds = new();
-            Uri keyvaultUri = new(Environment.GetEnvironmentVariable("vault-uri"));
+            Uri keyvaultUri = new(Environment.GetEnvironmentVariable("VAULT_URI"));
             SecretClient secretClient = new(keyvaultUri, creds);
 
             KeyVaultSecret dbHost = secretClient.GetSecret("db-host");
