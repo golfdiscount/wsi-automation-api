@@ -61,6 +61,10 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 {
                     log.LogWarning(e.ValidationResult.ErrorMessage);
                     return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
+                } catch (FormatException e)
+                {
+                    log.LogWarning(e.Message);
+                    return new BadRequestErrorMessageResult("Formatting error. Ensure that dates are in format YYYY-MM-DD.");
                 } catch (Exception e)
                 {
                     log.LogCritical(e.Message);
