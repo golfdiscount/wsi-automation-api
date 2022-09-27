@@ -4,7 +4,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -21,11 +20,17 @@ namespace wsi_triggers.Queue_Triggers
         private readonly string cs;
         private readonly JsonSerializerOptions jsonOptions;
         private readonly HttpClient magento;
-        public OrderCsvCreation(SqlConnectionStringBuilder builder, JsonSerializerOptions jsonOptions, IHttpClientFactory httpClientFactory)
+        private readonly BlobServiceClient blobServiceClient;
+
+        public OrderCsvCreation(SqlConnectionStringBuilder builder, 
+            JsonSerializerOptions jsonOptions, 
+            IHttpClientFactory httpClientFactory,
+            BlobServiceClient blobServiceClient)
         {
             cs = builder.ConnectionString;
             this.jsonOptions = jsonOptions;
             magento = httpClientFactory.CreateClient("magento");
+            this.blobServiceClient = blobServiceClient;
         }
 
         [FunctionName("OrderCsvCreation")]
@@ -61,7 +66,10 @@ namespace wsi_triggers.Queue_Triggers
                 }               
             };
 
-            QueueCsvSftp(orderCsv.ToString());
+            BinaryData csvContents = new(orderCsv.ToString());
+            string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
+            BlobContainerClient sftpContainerClient = blobServiceClient.GetBlobContainerClient("sftp");
+            await sftpContainerClient.UploadBlobAsync(fileName, csvContents);
         }
 
         private static string GenerateHeader(HeaderModel header, SqlConnection conn)
@@ -120,14 +128,6 @@ namespace wsi_triggers.Queue_Triggers
             detailCsv.Append($"HN,PGD{new string(',', 8)}");
 
             return detailCsv.ToString();
-        }
-    
-        private static void QueueCsvSftp(string csv)
-        {
-            BinaryData csvContents = new(csv);
-            string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
-            BlobClient client = new(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "sftp", fileName);
-            client.Upload(csvContents);
         }
     }
 }

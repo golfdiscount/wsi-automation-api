@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,12 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Web.Http;
 using wsi_triggers.Data;
 using wsi_triggers.Models.Order;
 using wsi_triggers.Models;
 using wsi_triggers.Models.Detail;
-using Azure.Storage.Blobs;
 
 namespace wsi_triggers.HTTP_Triggers.POST
 {    
@@ -23,15 +24,22 @@ namespace wsi_triggers.HTTP_Triggers.POST
     {
         private readonly string cs;
         private readonly JsonSerializerOptions jsonOptions;
+        private readonly BlobServiceClient blobServiceClient;
+        private readonly QueueServiceClient queueServiceClient;
 
-        public PostOrder(SqlConnectionStringBuilder builder, JsonSerializerOptions jsonOptions)
+        public PostOrder(SqlConnectionStringBuilder builder, 
+            JsonSerializerOptions jsonOptions,
+            QueueServiceClient queueServiceClient,
+            BlobServiceClient blobServiceClient)
         {
             cs = builder.ConnectionString;
             this.jsonOptions = jsonOptions;
+            this.queueServiceClient = queueServiceClient;
+            this.blobServiceClient = blobServiceClient;
         }
 
         [FunctionName("PostOrder")]
-        public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, 
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, 
             ILogger log)
         {
             StreamReader reader = new(req.Body);
@@ -43,7 +51,11 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 {
                     PostOrderModel order = JsonSerializer.Deserialize<PostOrderModel>(requestContents, jsonOptions);
                     InsertOrder(order);
-                    QueueOrderCsvCreation(order.OrderNumber);
+
+                    QueueClient orderCsvCreationQueue = queueServiceClient.GetQueueClient("order-csv-creation");
+                    log.LogInformation($"Queuing {order.OrderNumber} for CSV creation");
+                    await orderCsvCreationQueue.SendMessageAsync(order.OrderNumber);
+
                     return new CreatedResult("", order);
                 } catch (ValidationException e)
                 {
@@ -113,10 +125,14 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     foreach (var order in orders)
                     {
                         log.LogInformation($"Inserting {order.Value.OrderNumber} into the database");
-                        InsertOrder(order.Value);   
+                        InsertOrder(order.Value); // TODO: Change channel to 1 (for Magento) when inserting into DB
                     }
 
-                    QueueCsvSftp(requestContents);
+                    BinaryData csvContents = new(requestContents);
+                    string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
+                    BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
+                    log.LogInformation($"Uploading blob {fileName} to sftp container");
+                    await sftpContainer.UploadBlobAsync(fileName, csvContents);
                 } catch (ValidationException e)
                 {
                     log.LogWarning(e.ValidationResult.ErrorMessage);
@@ -128,7 +144,6 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 }
 
                 return new StatusCodeResult(201);
-
             }
 
             return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
@@ -207,22 +222,6 @@ namespace wsi_triggers.HTTP_Triggers.POST
 
             validationContext = new(order.Recipient);
             Validator.ValidateObject(order.Recipient, validationContext, true);
-        }
-    
-        private static void QueueOrderCsvCreation(string orderNumber)
-        {
-            byte[] messageBytes = System.Text.Encoding.UTF8.GetBytes(orderNumber);
-            string queueMessage = Convert.ToBase64String(messageBytes);
-            QueueClient queue = new(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "order-csv-creation");
-            queue.SendMessage(queueMessage);
-        }
-
-        private static void QueueCsvSftp(string csv)
-        {
-            BinaryData csvContents = new(csv);
-            string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
-            BlobClient client = new(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), "sftp", fileName);
-            client.Upload(csvContents);
         }
     }
 }
