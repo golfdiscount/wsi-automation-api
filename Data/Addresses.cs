@@ -50,9 +50,10 @@ namespace wsi_triggers.Data
             return address;
         }
 
-        public static int InsertAddress(AddressModel address, SqlConnection conn)
+        public static int InsertAddress(AddressModel address, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = new(Insert, conn);
+            cmd.Transaction = transaction;
 
             cmd.Parameters.Add("@name", System.Data.SqlDbType.VarChar).Value = address.Name;
             cmd.Parameters.Add("@street", System.Data.SqlDbType.VarChar).Value = address.Street;

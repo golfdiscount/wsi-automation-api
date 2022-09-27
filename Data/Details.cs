@@ -52,9 +52,10 @@ namespace wsi_triggers.Data
             return details;
         }
 
-        public static void InsertDetail(DetailModel detail, SqlConnection conn)
+        public static void InsertDetail(DetailModel detail, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = new(Insert, conn);
+            cmd.Transaction = transaction;
 
             cmd.Parameters.AddWithValue("@pick_ticket_number", detail.PickticketNumber);
             cmd.Parameters.AddWithValue("@line_number", detail.LineNumber);
