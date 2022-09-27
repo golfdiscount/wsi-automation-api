@@ -150,6 +150,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 return new StatusCodeResult(201);
             }
 
+            log.LogWarning("Incoming request did not have Content-Type header of application/json or text/csv");
             return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
         }
 
