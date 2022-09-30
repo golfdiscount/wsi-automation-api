@@ -6,6 +6,7 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Renci.SshNet;
 using System;
+using System.Text;
 using System.Text.Json;
 
 [assembly: FunctionsStartup(typeof(wsi_triggers.Startup))]
@@ -60,6 +61,17 @@ namespace wsi_triggers
                 KeyVaultSecret duffersUri = secretClient.GetSecret("dufferscorner-uri");
 
                 config.BaseAddress = new(duffersUri.Value);
+            });
+            builder.Services.AddHttpClient("shipstation", config =>
+            {
+                KeyVaultSecret shipstationUri = secretClient.GetSecret("shipstation-uri");
+                KeyVaultSecret shipstationKey = secretClient.GetSecret("shipstation-key");
+                KeyVaultSecret shipstationSecret = secretClient.GetSecret("shipstation-secret");
+
+                config.BaseAddress = new(shipstationUri.Value);
+
+                string shipstationCreds = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shipstationKey.Value}:{shipstationSecret.Value}"));
+                config.DefaultRequestHeaders.Authorization = new("Basic", shipstationCreds);
             });
 
             builder.Services.AddAzureClients(clientBuilder =>
