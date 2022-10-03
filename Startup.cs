@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Renci.SshNet;
+using SendGrid.Extensions.DependencyInjection;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -72,6 +73,12 @@ namespace wsi_triggers
 
                 string shipstationCreds = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shipstationKey.Value}:{shipstationSecret.Value}"));
                 config.DefaultRequestHeaders.Authorization = new("Basic", shipstationCreds);
+            });
+
+            builder.Services.AddSendGrid(config =>
+            {
+                KeyVaultSecret sendGridKey = secretClient.GetSecret("sendgrid-key");
+                config.ApiKey = sendGridKey.Value;
             });
 
             builder.Services.AddAzureClients(clientBuilder =>
