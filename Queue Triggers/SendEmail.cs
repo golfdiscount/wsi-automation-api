@@ -1,7 +1,6 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using SendGrid.Helpers.Mail;
-using SendGrid.Extensions.DependencyInjection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using wsi_triggers.Models.SendGrid;
@@ -12,8 +11,8 @@ namespace wsi_triggers.Queue_Triggers
     public class SendEmail
     {
         private readonly JsonSerializerOptions jsonOptions;
-        private readonly SendGridClient emailClient;
-        public SendEmail(JsonSerializerOptions jsonSerializerOptions, SendGridClient sendGridClient)
+        private readonly ISendGridClient emailClient;
+        public SendEmail(JsonSerializerOptions jsonSerializerOptions, ISendGridClient sendGridClient)
         {
             jsonOptions = jsonSerializerOptions;
             emailClient = sendGridClient;
