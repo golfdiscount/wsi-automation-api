@@ -28,12 +28,29 @@ namespace wsi_triggers.Queue_Triggers
             SendGridMessageModel incomingMessage = JsonSerializer.Deserialize<SendGridMessageModel>(myQueueItem, jsonOptions);
 
             SendGridMessage message = new();
-            message.AddTo(incomingMessage.To);
+
+            foreach (string recipient in incomingMessage.To)
+            {
+                EmailAddress recipientAddress = new(recipient);
+                message.AddTo(recipientAddress);
+            }
+
             message.AddContent("text/html", incomingMessage.Body);
             message.SetFrom(new EmailAddress(incomingMessage.From));
             message.SetSubject(incomingMessage.Subject);
 
-            await emailClient.SendEmailAsync(message);
+            foreach (Attachment attachment in incomingMessage.Attachments)
+            {
+                message.AddAttachment(attachment);
+            }
+
+            Response sendResponse = await emailClient.SendEmailAsync(message);
+
+            if(!sendResponse.IsSuccessStatusCode)
+            {
+                log.LogError("Unable to send email");
+                log.LogError(await sendResponse.Body.ReadAsStringAsync());
+            }
         }
     }
 }
