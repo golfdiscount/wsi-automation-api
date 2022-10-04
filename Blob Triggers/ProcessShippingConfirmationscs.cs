@@ -1,12 +1,16 @@
+using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+using SendGrid.Helpers.Mail;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Text.RegularExpressions;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using wsi_triggers.Models.SendGrid;
 
 namespace wsi_triggers.Blob_Triggers
 {
@@ -14,11 +18,15 @@ namespace wsi_triggers.Blob_Triggers
     {
         private readonly HttpClient shipstation;
         private readonly JsonSerializerOptions jsonOptions;
+        private readonly QueueServiceClient queueServiceClient;
 
-        public ProcessShippingConfirmationscs(IHttpClientFactory clientFactory, JsonSerializerOptions jsonOptions)
+        public ProcessShippingConfirmationscs(IHttpClientFactory clientFactory, 
+            JsonSerializerOptions jsonOptions,
+            QueueServiceClient queueServiceClient)
         {
             shipstation = clientFactory.CreateClient("shipstation");
             this.jsonOptions = jsonOptions;
+            this.queueServiceClient = queueServiceClient;
         }
 
         [FunctionName("ProcessShippingConfirmationscs")]
@@ -47,11 +55,11 @@ namespace wsi_triggers.Blob_Triggers
                     
                     if (skuCounts.ContainsKey(sku))
                     {
-                        skuCounts[sku]++;
+                        skuCounts[sku] += int.Parse(fields[35]);
                     }
                     else
                     {
-                        skuCounts[sku] = 1;
+                        skuCounts[sku] = int.Parse(fields[35]);
                     }
 
                     if (!trackingNumbers.ContainsKey(orderNumber))
@@ -110,15 +118,64 @@ namespace wsi_triggers.Blob_Triggers
                         TrackingNumber = trackingNumber
                     };
 
+/*                    log.LogInformation($"Marking {orderNumber} as shipped in ShipStation");
                     HttpResponseMessage postResponse = await shipstation.PostAsJsonAsync("/orders/markasshipped", body);
 
                     if (!postResponse.IsSuccessStatusCode)
                     {
                         log.LogError($"Unable to mark {orderNumber} as shipped in ShipStation");
                         failedOrders.Add(orderNumber);
-                    }
+                    }*/
                 }
             }
+
+            QueueClient emailQueue = queueServiceClient.GetQueueClient("send-email");
+            List<string> recipients = new()
+            {
+                "harmeet@golfdiscount.com"
+            };
+
+            if (failedOrders.Count > 0)
+            {
+                log.LogError($"There were {failedOrders.Count} orders that were failed to be marked as shipped");
+
+                SendGridMessageModel emailBody = new()
+                {
+                    To = recipients,
+                    Subject = $"{failedOrders.Count} orders failed to be marked as shipped in ShipStation",
+                    Body = $"The following orders could not be marked a shipped in ShipStation from file {name}: {string.Join(',', failedOrders)}"
+                };
+
+                string emailBodyJson = JsonSerializer.Serialize(emailBody, jsonOptions);
+                emailQueue.SendMessage(emailBodyJson);
+            }
+
+            StringBuilder skuCountCsv = new();
+
+            foreach (string sku in skuCounts.Keys)
+            {
+                skuCountCsv.AppendLine($"{sku}, {skuCounts[sku]}");
+            }
+
+            DateTime today = DateTime.Now;
+            SendGridMessageModel skuCountEmailBody = new()
+            {
+                To = recipients,
+                Subject = $"{skuCounts.Keys.Count} SKU(s) were sent to WSI",
+                Body = $"SKU counts for {today:MM-dd-yyyy}",
+                Attachments = new()
+            };
+
+            Attachment skuCsvAttachment = new()
+            {
+                Filename = $"WSI_SKUs_{today:MM_dd_yyyy}.csv",
+                Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(skuCountCsv.ToString())),
+                Type = "text/csv",
+            };
+            
+            skuCountEmailBody.Attachments.Add(skuCsvAttachment);
+            string skuCountEmailBodyJson = JsonSerializer.Serialize(skuCountEmailBody, jsonOptions);
+            emailQueue.SendMessage(skuCountEmailBodyJson);
         }
 
         private class JsonBody
@@ -144,5 +201,6 @@ namespace wsi_triggers.Blob_Triggers
             public int OrderId { get; set; }
             public string OrderNumber { get; set; }
         }
+
     }
 }
