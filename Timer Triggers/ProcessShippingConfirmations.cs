@@ -184,35 +184,30 @@ namespace wsi_triggers.Blob_Triggers
         private string GetShippingConfirmations()
         {
             StringBuilder csv = new();
-            try
+
+            wsiSftp.Connect();
+            List<SftpFile> dirFiles = new(wsiSftp.ListDirectory("Outbound"));
+
+            DateTime now = DateTime.Now;
+            Regex fileMask = new($"SC_[0-9]+_[0-9]+_{now:MMddyyyy}.+csv");
+
+            List<SftpFile> shippingConfirmations = dirFiles.FindAll(file =>
             {
-                wsiSftp.Connect();
-                List<SftpFile> dirFiles = new(wsiSftp.ListDirectory("Outbound"));
 
-                DateTime now = DateTime.Now;
-                Regex fileMask = new($"SC_[0-9]+_[0-9]+_{now:MMddyyyy}.+csv");
+                return fileMask.IsMatch(file.Name);
+            });
 
-                List<SftpFile> shippingConfirmations = dirFiles.FindAll(file =>
-                {
-
-                    return fileMask.IsMatch(file.Name);
-                });
-
-                foreach (SftpFile file in shippingConfirmations)
-                {
-                    string[] lines = wsiSftp.ReadAllLines(file.FullName);
+            foreach (SftpFile file in shippingConfirmations)
+            {
+                string[] lines = wsiSftp.ReadAllLines(file.FullName);
                     
-                    for (int i = 0; i < lines.Length; i++)
-                    {
-                        csv.AppendLine(lines[i]);
-                    }
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    csv.AppendLine(lines[i]);
                 }
             }
-            finally
-            {
-                wsiSftp.Disconnect();
-            }
 
+            wsiSftp.Disconnect();
 
             return csv.ToString();
         }
