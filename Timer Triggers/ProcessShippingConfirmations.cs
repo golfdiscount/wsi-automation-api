@@ -1,6 +1,8 @@
 using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+using Renci.SshNet;
+using Renci.SshNet.Sftp;
 using SendGrid.Helpers.Mail;
 using System;
 using System.Collections.Generic;
@@ -14,28 +16,33 @@ using wsi_triggers.Models.SendGrid;
 
 namespace wsi_triggers.Blob_Triggers
 {
-    public class ProcessShippingConfirmationscs
+    public class ProcessShippingConfirmations
     {
         private readonly HttpClient shipstation;
-        private readonly JsonSerializerOptions jsonOptions;
         private readonly QueueServiceClient queueServiceClient;
+        private readonly SftpClient wsiSftp;
 
-        public ProcessShippingConfirmationscs(IHttpClientFactory clientFactory, 
+        private readonly JsonSerializerOptions jsonOptions;
+        private readonly List<string> recipients = new()
+        {
+            "harmeet@golfdiscount.com"
+        };
+
+        public ProcessShippingConfirmations(IHttpClientFactory clientFactory, 
             JsonSerializerOptions jsonOptions,
-            QueueServiceClient queueServiceClient)
+            QueueServiceClient queueServiceClient,
+            SftpClient sftpClient)
         {
             shipstation = clientFactory.CreateClient("shipstation");
             this.jsonOptions = jsonOptions;
             this.queueServiceClient = queueServiceClient;
+            wsiSftp = sftpClient;
         }
 
-        [FunctionName("ProcessShippingConfirmationscs")]
-        public async Task Run([BlobTrigger("shipping-confirmations/{name}", Connection = "AzureWebJobsStorage")] Stream blob, string name, ILogger log)
+        [FunctionName("ProcessShippingConfirmations")]
+        public async Task Run([TimerTrigger("0 0 20 * * *")] TimerInfo timer, ILogger log)
         {
-            log.LogInformation($"Processing shipping confirmations from {name}");
-
-            StreamReader reader = new(blob);
-            string csv = await reader.ReadToEndAsync();
+            string csv = GetShippingConfirmations();
             csv = csv.Trim();
             string[] records = csv.Split('\n');
 
@@ -53,14 +60,12 @@ namespace wsi_triggers.Blob_Triggers
                     string sku = fields[14];
                     string trackingNumber = fields[32];
                     
-                    if (skuCounts.ContainsKey(sku))
+                    if (!skuCounts.ContainsKey(sku))
                     {
-                        skuCounts[sku] += int.Parse(fields[35]);
+                        skuCounts[sku] = 0;
                     }
-                    else
-                    {
-                        skuCounts[sku] = int.Parse(fields[35]);
-                    }
+
+                    skuCounts[sku] += int.Parse(fields[35]);
 
                     if (!trackingNumbers.ContainsKey(orderNumber))
                     {
@@ -73,8 +78,10 @@ namespace wsi_triggers.Blob_Triggers
 
             foreach (string orderNumber in trackingNumbers.Keys)
             {
-                Regex amazonPattern = new(@"\d+-\d+-\d+"); // This pattern checks to see if an order is an Amazon order
-                string orderNumberQuery = amazonPattern.IsMatch(orderNumber) ? orderNumber : $"{orderNumber}_WSI"; // Amazon orders don't have _WSI at the end
+                // Amazon orders don't have _WSI at the end
+                // This pattern checks to see if an order is an Amazon order
+                Regex amazonPattern = new(@"\d+-\d+-\d+");
+                string orderNumberQuery = amazonPattern.IsMatch(orderNumber) ? orderNumber : $"{orderNumber}_WSI";
 
                 HttpResponseMessage response = await shipstation.GetAsync($"/orders?orderNumber={orderNumberQuery}");
                 
@@ -118,22 +125,18 @@ namespace wsi_triggers.Blob_Triggers
                         TrackingNumber = trackingNumber
                     };
 
-/*                    log.LogInformation($"Marking {orderNumber} as shipped in ShipStation");
+                    log.LogInformation($"Marking {orderNumberQuery} as shipped in ShipStation");
                     HttpResponseMessage postResponse = await shipstation.PostAsJsonAsync("/orders/markasshipped", body);
 
                     if (!postResponse.IsSuccessStatusCode)
                     {
                         log.LogError($"Unable to mark {orderNumber} as shipped in ShipStation");
                         failedOrders.Add(orderNumber);
-                    }*/
+                    }
                 }
             }
 
             QueueClient emailQueue = queueServiceClient.GetQueueClient("send-email");
-            List<string> recipients = new()
-            {
-                "harmeet@golfdiscount.com"
-            };
 
             if (failedOrders.Count > 0)
             {
@@ -143,7 +146,7 @@ namespace wsi_triggers.Blob_Triggers
                 {
                     To = recipients,
                     Subject = $"{failedOrders.Count} orders failed to be marked as shipped in ShipStation",
-                    Body = $"The following orders could not be marked a shipped in ShipStation from file {name}: {string.Join(',', failedOrders)}"
+                    Body = $"The following orders could not be marked a shipped in ShipStation: {string.Join(',', failedOrders)}"
                 };
 
                 string emailBodyJson = JsonSerializer.Serialize(emailBody, jsonOptions);
@@ -176,6 +179,42 @@ namespace wsi_triggers.Blob_Triggers
             skuCountEmailBody.Attachments.Add(skuCsvAttachment);
             string skuCountEmailBodyJson = JsonSerializer.Serialize(skuCountEmailBody, jsonOptions);
             emailQueue.SendMessage(skuCountEmailBodyJson);
+        }
+
+        private string GetShippingConfirmations()
+        {
+            StringBuilder csv = new();
+            try
+            {
+                wsiSftp.Connect();
+                List<SftpFile> dirFiles = new(wsiSftp.ListDirectory("Outbound"));
+
+                DateTime now = DateTime.Now;
+                Regex fileMask = new($"SC_[0-9]+_[0-9]+_{now:MMddyyyy}.+csv");
+
+                List<SftpFile> shippingConfirmations = dirFiles.FindAll(file =>
+                {
+
+                    return fileMask.IsMatch(file.Name);
+                });
+
+                foreach (SftpFile file in shippingConfirmations)
+                {
+                    string[] lines = wsiSftp.ReadAllLines(file.FullName);
+                    
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        csv.AppendLine(lines[i]);
+                    }
+                }
+            }
+            finally
+            {
+                wsiSftp.Disconnect();
+            }
+
+
+            return csv.ToString();
         }
 
         private class JsonBody
