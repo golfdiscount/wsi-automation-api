@@ -29,10 +29,13 @@ namespace wsi_triggers.Queue_Triggers
 
             SendGridMessage message = new();
 
-            foreach (string recipient in incomingMessage.To)
+            if (incomingMessage.Attachments != null)
             {
-                EmailAddress recipientAddress = new(recipient);
-                message.AddTo(recipientAddress);
+                foreach (string recipient in incomingMessage.To)
+                {
+                    EmailAddress recipientAddress = new(recipient);
+                    message.AddTo(recipientAddress);
+                }
             }
 
             message.AddContent("text/html", incomingMessage.Body);
