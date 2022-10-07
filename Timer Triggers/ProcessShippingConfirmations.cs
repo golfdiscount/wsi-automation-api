@@ -89,7 +89,7 @@ namespace wsi_triggers.Blob_Triggers
                 {
                     log.LogError($"Unable to send request to ShipStation: {response.ReasonPhrase}");
                     failedOrders.Add(orderNumber);
-                    break;
+                    continue;
                 }
                 
                 ShipstationOrderList orders = JsonSerializer.Deserialize<ShipstationOrderList>(response.Content.ReadAsStream(), jsonOptions);
@@ -98,7 +98,7 @@ namespace wsi_triggers.Blob_Triggers
                 {
                     log.LogWarning($"Query {orderNumberQuery} returned 0 results from ShipStation");
                     failedOrders.Add(orderNumber);
-                    break;
+                    continue;
                 }
 
                 ShipstationOrder order = null;
