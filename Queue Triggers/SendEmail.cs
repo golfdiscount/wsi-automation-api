@@ -39,9 +39,12 @@ namespace wsi_triggers.Queue_Triggers
             message.SetFrom(new EmailAddress(incomingMessage.From));
             message.SetSubject(incomingMessage.Subject);
 
-            foreach (Attachment attachment in incomingMessage.Attachments)
+            if (incomingMessage.Attachments != null)
             {
-                message.AddAttachment(attachment);
+                foreach (Attachment attachment in incomingMessage.Attachments)
+                {
+                    message.AddAttachment(attachment);
+                }
             }
 
             Response sendResponse = await emailClient.SendEmailAsync(message);
