@@ -21,12 +21,16 @@ namespace wsi_triggers.Blob_Triggers
         private readonly HttpClient shipstation;
         private readonly QueueServiceClient queueServiceClient;
         private readonly SftpClient wsiSftp;
-
         private readonly JsonSerializerOptions jsonOptions;
+
         private readonly List<string> recipients = new()
         {
             "harmeet@golfdiscount.com"
         };
+        private readonly StringBuilder confirmationSummary = new(); // Summary of orders in format: order number, sku, tracking number
+        private readonly Dictionary<string, int> skuCounts = new();
+        private readonly Dictionary<string, HashSet<string>> trackingNumbers = new();
+        private readonly HashSet<string> failedOrders = new();
 
         public ProcessShippingConfirmations(IHttpClientFactory clientFactory, 
             JsonSerializerOptions jsonOptions,
@@ -46,93 +50,25 @@ namespace wsi_triggers.Blob_Triggers
             csv = csv.Trim();
             string[] records = csv.Split('\n');
 
-            Dictionary<string, int> skuCounts = new();
-            Dictionary<string, HashSet<string>> trackingNumbers = new();
-            HashSet<string> failedOrders = new();
-
             foreach (string record in records)
             {
-                string[] fields = record.Split(',');
-
-                if (fields[0] == "CSD")
-                {
-                    string orderNumber = fields[6];
-                    string sku = fields[14];
-                    string trackingNumber = fields[32];
-                    
-                    if (!skuCounts.ContainsKey(sku))
-                    {
-                        skuCounts[sku] = 0;
-                    }
-
-                    skuCounts[sku] += int.Parse(fields[35]);
-
-                    if (!trackingNumbers.ContainsKey(orderNumber))
-                    {
-                        trackingNumbers[orderNumber] = new();
-                    }
-
-                    trackingNumbers[orderNumber].Add(trackingNumber);
-                }
+                ProcessRecord(record);
             }
 
             foreach (string orderNumber in trackingNumbers.Keys)
             {
-                // Amazon orders don't have _WSI at the end
-                // This pattern checks to see if an order is an Amazon order
-                Regex amazonPattern = new(@"\d+-\d+-\d+");
-                string orderNumberQuery = amazonPattern.IsMatch(orderNumber) ? orderNumber : $"{orderNumber}_WSI";
-
-                HttpResponseMessage response = await shipstation.GetAsync($"/orders?orderNumber={orderNumberQuery}");
-                
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    log.LogError($"Unable to send request to ShipStation: {response.ReasonPhrase}");
+                    string orderKey = await MarkShipped(orderNumber);
+                    log.LogInformation($"Marked {orderKey} as shipped in ShipStation");
+                } catch (HttpRequestException e)
+                {
+                    log.LogError($"Unable to send request to ShipStation: {e.Message}");
                     failedOrders.Add(orderNumber);
-                    continue;
-                }
-                
-                ShipstationOrderList orders = JsonSerializer.Deserialize<ShipstationOrderList>(response.Content.ReadAsStream(), jsonOptions);
-
-                if (orders.Total == 0)
+                } catch (ArgumentException e)
                 {
-                    log.LogWarning($"Query {orderNumberQuery} returned 0 results from ShipStation");
+                    log.LogError(e.Message);
                     failedOrders.Add(orderNumber);
-                    continue;
-                }
-
-                ShipstationOrder order = null;
-
-                foreach (ShipstationOrder shipstationOrder in orders.Orders)
-                {
-                    if (shipstationOrder.OrderNumber == orderNumberQuery)
-                    {
-                        order = shipstationOrder;
-                    }
-                }
-
-                if (order == null)
-                {
-                    log.LogWarning($"Could not find an order number that matches {orderNumberQuery}");
-                }
-
-                foreach (string trackingNumber in trackingNumbers[orderNumber])
-                {
-                    JsonBody body = new()
-                    {
-                        OrderId = order.OrderId,
-                        ShipDate = DateTime.Today.ToString("yyyy-MM-dd"),
-                        TrackingNumber = trackingNumber
-                    };
-
-                    log.LogInformation($"Marking {orderNumberQuery} as shipped in ShipStation");
-                    HttpResponseMessage postResponse = await shipstation.PostAsJsonAsync("/orders/markasshipped", body);
-
-                    if (!postResponse.IsSuccessStatusCode)
-                    {
-                        log.LogError($"Unable to mark {orderNumber} as shipped in ShipStation");
-                        failedOrders.Add(orderNumber);
-                    }
                 }
             }
 
@@ -175,8 +111,16 @@ namespace wsi_triggers.Blob_Triggers
                 Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(skuCountCsv.ToString())),
                 Type = "text/csv",
             };
+
+            Attachment confirmationSummaryAttachment = new()
+            {
+                Filename = $"Shipping Summary {today:MM-dd-yyyy}.csv",
+                Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(confirmationSummary.ToString())),
+                Type = "text/csv"
+            };
             
             skuCountEmailBody.Attachments.Add(skuCsvAttachment);
+            skuCountEmailBody.Attachments.Add(confirmationSummaryAttachment);
             string skuCountEmailBodyJson = JsonSerializer.Serialize(skuCountEmailBody, jsonOptions);
             emailQueue.SendMessage(skuCountEmailBodyJson);
         }
@@ -210,6 +154,82 @@ namespace wsi_triggers.Blob_Triggers
             wsiSftp.Disconnect();
 
             return csv.ToString();
+        }
+
+        private void ProcessRecord(string record)
+        {
+            string[] fields = record.Split(',');
+
+            if (fields[0] == "CSD")
+            {
+                string orderNumber = fields[6];
+                string sku = fields[14];
+                string trackingNumber = fields[32];
+
+                if (!skuCounts.ContainsKey(sku))
+                {
+                    skuCounts[sku] = 0;
+                }
+
+                skuCounts[sku] += int.Parse(fields[35]);
+
+                if (!trackingNumbers.ContainsKey(orderNumber))
+                {
+                    trackingNumbers[orderNumber] = new();
+                }
+
+                trackingNumbers[orderNumber].Add(trackingNumber);
+
+                confirmationSummary.AppendLine($"{orderNumber},{sku},{trackingNumber}");
+            }
+        }
+
+        private async Task<string> MarkShipped(string orderNumber)
+        {
+            // This pattern checks to see if an order is an Amazon order
+            Regex amazonPattern = new(@"\d+-\d+-\d+");
+            // Amazon orders don't have _WSI at the end
+            string orderNumberQuery = amazonPattern.IsMatch(orderNumber) ? orderNumber : $"{orderNumber}_WSI";
+
+            HttpResponseMessage response = await shipstation.GetAsync($"/orders?orderNumber={orderNumberQuery}");
+            response.EnsureSuccessStatusCode();
+
+            ShipstationOrderList orders = JsonSerializer.Deserialize<ShipstationOrderList>(response.Content.ReadAsStream(), jsonOptions);
+
+            if (orders.Total == 0)
+            {
+                throw new ArgumentException($"Query {orderNumberQuery} returned 0 results from ShipStation");
+            }
+
+            ShipstationOrder order = null;
+
+            foreach (ShipstationOrder shipstationOrder in orders.Orders)
+            {
+                if (shipstationOrder.OrderNumber == orderNumberQuery)
+                {
+                    order = shipstationOrder;
+                }
+            }
+
+            if (order == null)
+            {
+                throw new ArgumentException($"Unable to find an order that matches {orderNumberQuery}");
+            }
+
+            foreach (string trackingNumber in trackingNumbers[orderNumber])
+            {
+                JsonBody body = new()
+                {
+                    OrderId = order.OrderId,
+                    ShipDate = DateTime.Today.ToString("yyyy-MM-dd"),
+                    TrackingNumber = trackingNumber
+                };
+
+                HttpResponseMessage postResponse = await shipstation.PostAsJsonAsync("/orders/markasshipped", body);
+                postResponse.EnsureSuccessStatusCode();
+            }
+
+            return orderNumberQuery;
         }
 
         private class JsonBody
