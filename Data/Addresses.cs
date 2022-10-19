@@ -1,9 +1,9 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
-using wsi_triggers.Models.Address;
+using WsiApi.Models.Address;
 
-namespace wsi_triggers.Data
+namespace WsiApi.Data
 {
     public static class Addresses
     {

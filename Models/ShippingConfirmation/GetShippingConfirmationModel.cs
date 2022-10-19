@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace wsi_triggers.Models.ShippingConfirmation
+namespace WsiApi.Models.ShippingConfirmation
 {
     public class GetShippingConfirmationModel
     {

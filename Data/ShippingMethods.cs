@@ -1,8 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using wsi_triggers.Models.ShippingMethod;
+using WsiApi.Models.ShippingMethod;
 
-namespace wsi_triggers.Data
+namespace WsiApi.Data
 {
     public static class ShippingMethods
     {

@@ -1,8 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using wsi_triggers.Models.Detail;
+using WsiApi.Models.Detail;
 
-namespace wsi_triggers.Data
+namespace WsiApi.Data
 {
     public static class Details
     {

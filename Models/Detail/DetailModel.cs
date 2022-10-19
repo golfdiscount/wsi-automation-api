@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace wsi_triggers.Models.Detail
+namespace WsiApi.Models.Detail
 {
     public class DetailModel
     {

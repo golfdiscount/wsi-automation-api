@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using wsi_triggers.Data;
-using wsi_triggers.Models;
+using WsiApi.Data;
+using WsiApi.Models;
 
-namespace wsi_triggers
+namespace WsiApi
 {
     public class GetStore
     {
