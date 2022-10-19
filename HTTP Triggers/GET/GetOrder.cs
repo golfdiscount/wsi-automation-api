@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using wsi_triggers.Data;
-using wsi_triggers.Models;
-using wsi_triggers.Models.Order;
+using WsiApi.Data;
+using WsiApi.Models;
+using WsiApi.Models.Order;
 
-namespace wsi_triggers.HTTP_Triggers.GET
+namespace WsiApi.HTTP_Triggers.GET
 {
     public class GetOrder
     {

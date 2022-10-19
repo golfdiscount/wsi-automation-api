@@ -12,9 +12,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using wsi_triggers.Models.SendGrid;
+using WsiApi.Models.SendGrid;
 
-namespace wsi_triggers.Blob_Triggers
+namespace WsiApi.Blob_Triggers
 {
     public class ProcessShippingConfirmations
     {

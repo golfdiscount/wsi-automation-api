@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace wsi_triggers.Models.ShippingMethod
+namespace WsiApi.Models.ShippingMethod
 {
     public class GetShippingMethodModel : ShippingMethodModel
     {

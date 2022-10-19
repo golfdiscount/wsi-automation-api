@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using wsi_triggers.Data;
-using wsi_triggers.Models.ShippingMethod;
+using WsiApi.Data;
+using WsiApi.Models.ShippingMethod;
 
-namespace wsi_triggers.HTTP_Triggers
+namespace WsiApi.HTTP_Triggers
 {
     public class GetShippingMethod
     {

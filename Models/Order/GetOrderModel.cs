@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using wsi_triggers.Models.Address;
-using wsi_triggers.Models.Detail;
-using wsi_triggers.Models.ShippingMethod;
+using WsiApi.Models.Address;
+using WsiApi.Models.Detail;
+using WsiApi.Models.ShippingMethod;
 
-namespace wsi_triggers.Models.Order
+namespace WsiApi.Models.Order
 {
     public class GetOrderModel : OrderModel
     {

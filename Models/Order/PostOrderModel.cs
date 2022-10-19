@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using wsi_triggers.Models.Address;
+using WsiApi.Models.Address;
 
-namespace wsi_triggers.Models.Order
+namespace WsiApi.Models.Order
 {
     public class PostOrderModel : OrderModel
     {

@@ -13,12 +13,12 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web.Http;
-using wsi_triggers.Data;
-using wsi_triggers.Models.Order;
-using wsi_triggers.Models;
-using wsi_triggers.Models.Detail;
+using WsiApi.Data;
+using WsiApi.Models.Order;
+using WsiApi.Models;
+using WsiApi.Models.Detail;
 
-namespace wsi_triggers.HTTP_Triggers.POST
+namespace WsiApi.HTTP_Triggers.POST
 {    
     public class PostOrder
     {

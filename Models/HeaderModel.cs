@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace wsi_triggers.Models
+namespace WsiApi.Models
 {
     public class HeaderModel
     {

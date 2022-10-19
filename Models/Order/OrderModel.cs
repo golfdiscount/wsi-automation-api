@@ -1,4 +1,4 @@
-﻿namespace wsi_triggers.Models.Order
+﻿namespace WsiApi.Models.Order
 {
     public class OrderModel
     {

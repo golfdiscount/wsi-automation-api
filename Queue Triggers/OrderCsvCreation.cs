@@ -8,12 +8,12 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using wsi_triggers.Data;
-using wsi_triggers.Models;
-using wsi_triggers.Models.Address;
-using wsi_triggers.Models.Detail;
+using WsiApi.Data;
+using WsiApi.Models;
+using WsiApi.Models.Address;
+using WsiApi.Models.Detail;
 
-namespace wsi_triggers.Queue_Triggers
+namespace WsiApi.Queue_Triggers
 {
     public class OrderCsvCreation
     {
