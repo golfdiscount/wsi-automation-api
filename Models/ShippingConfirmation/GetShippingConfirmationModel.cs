@@ -2,7 +2,7 @@
 
 namespace wsi_triggers.Models.ShippingConfirmation
 {
-    public class GetShippingMethodModel
+    public class GetShippingConfirmationModel
     {
         public string PickticketNumber { get; set; }
         
