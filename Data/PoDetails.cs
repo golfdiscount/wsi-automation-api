@@ -1,5 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
-using System.Text;
+using System.Collections.Generic;
 using WsiApi.Models;
 
 namespace WsiApi.Data
@@ -10,7 +10,7 @@ namespace WsiApi.Data
         private static readonly string Insert = @"INSERT INTO [po_detail] (po_number, line_number, sku, units)
             VALUES (@po_number, @line_number, @sku, @units);";
 
-        public static PoDetailModel GetDetail(string po_number, string connectionString)
+        public static List<PoDetailModel> GetDetail(string po_number, string connectionString)
         {
             using SqlConnection conn = new(connectionString);
             conn.Open();
@@ -25,6 +25,8 @@ namespace WsiApi.Data
                 return null;
             }
 
+            List<PoDetailModel> details = new();
+
             int poNumberIdx = reader.GetOrdinal("po_number");
             int lineNumberIdx = reader.GetOrdinal("line_number");
             int actionIdx = reader.GetOrdinal("action");
@@ -35,16 +37,21 @@ namespace WsiApi.Data
 
             reader.Read();
 
-            return new()
+            while (reader.Read())
             {
-                PoNumber = reader.GetString(poNumberIdx),
-                Action = reader.GetString(actionIdx)[0],
-                LineNumber = reader.GetInt32(lineNumberIdx),
-                Sku = reader.GetString(skuIdx),
-                Units = reader.GetInt32(unitsIdx),
-                CreatedAt = reader.GetDateTime(createdAtIdx),
-                UpdatedAt = reader.GetDateTime(updatedAtIdx)
-            };
+                details.Add(new()
+                {
+                    PoNumber = reader.GetString(poNumberIdx),
+                    Action = reader.GetString(actionIdx)[0],
+                    LineNumber = reader.GetInt32(lineNumberIdx),
+                    Sku = reader.GetString(skuIdx),
+                    Units = reader.GetInt32(unitsIdx),
+                    CreatedAt = reader.GetDateTime(createdAtIdx),
+                    UpdatedAt = reader.GetDateTime(updatedAtIdx)
+                });
+            }
+
+            return details;
         }
 
         public static void InsertDetail(PoDetailModel detail, string connectionString)
