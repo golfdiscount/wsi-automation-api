@@ -6,7 +6,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using WsiApi.Data;
-using WsiApi.Models.ShippingMethod;
+using WsiApi.Models;
 
 namespace WsiApi.HTTP_Triggers
 {
@@ -26,7 +26,7 @@ namespace WsiApi.HTTP_Triggers
         {
             if (code != null)
             {
-                GetShippingMethodModel method = ShippingMethods.GetShippingMethods(code, cs);
+                ShippingMethodModel method = ShippingMethods.GetShippingMethods(code, cs);
 
                 if (method == null)
                 {
@@ -36,7 +36,7 @@ namespace WsiApi.HTTP_Triggers
                 return new OkObjectResult(method);
             }
 
-            List<GetShippingMethodModel> methods = ShippingMethods.GetShippingMethods(cs);
+            List<ShippingMethodModel> methods = ShippingMethods.GetShippingMethods(cs);
             return new OkObjectResult(methods);
         }
     }

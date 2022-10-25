@@ -10,8 +10,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using WsiApi.Data;
 using WsiApi.Models;
-using WsiApi.Models.Address;
-using WsiApi.Models.Detail;
 
 namespace WsiApi.Queue_Triggers
 {
@@ -41,19 +39,19 @@ namespace WsiApi.Queue_Triggers
 
             using SqlConnection conn = new(cs);
             conn.Open();
-            HeaderModel header = Headers.GetHeader(orderNumber, conn);
+            HeaderModel header = Headers.GetHeader(orderNumber, cs);
 
             if (header == null)
             {
                 throw new ArgumentException($"{orderNumber} does not exist in the database");
             }
 
-            List<GetDetailModel> details = Details.GetDetails(header.PickticketNumber, conn);
+            List<DetailModel> details = Details.GetDetails(header.PickticketNumber, cs);
 
             StringBuilder orderCsv = new();
-            orderCsv.AppendLine(GenerateHeader(header, conn));
+            orderCsv.AppendLine(GenerateHeader(header));
 
-            foreach(GetDetailModel detail in details)
+            foreach(DetailModel detail in details)
             {
                 try
                 {
@@ -72,7 +70,7 @@ namespace WsiApi.Queue_Triggers
             await sftpContainerClient.UploadBlobAsync(fileName, csvContents);
         }
 
-        private static string GenerateHeader(HeaderModel header, SqlConnection conn)
+        private string GenerateHeader(HeaderModel header)
         {
             StringBuilder headerCsv = new();
             headerCsv.Append($"PTH,{header.Action},{header.PickticketNumber},{header.OrderNumber},C,");
@@ -81,7 +79,7 @@ namespace WsiApi.Queue_Triggers
             headerCsv.Append("75,");
             headerCsv.Append(new string(',', 2));
 
-            AddressModel customer = Addresses.GetAddress(header.Customer, conn);
+            AddressModel customer = Addresses.GetAddress(header.Customer, cs);
 
             headerCsv.Append($"\"{customer.Name}\",");
             headerCsv.Append($"\"{customer.Street}\",");
@@ -90,7 +88,7 @@ namespace WsiApi.Queue_Triggers
             headerCsv.Append($"{customer.Country},");
             headerCsv.Append($"{customer.Zip},,");
 
-            AddressModel recipient = Addresses.GetAddress(header.Recipient, conn);
+            AddressModel recipient = Addresses.GetAddress(header.Recipient, cs);
 
             headerCsv.Append($"\"{recipient.Name}\",");
             headerCsv.Append($"\"{recipient.Street}\",");
