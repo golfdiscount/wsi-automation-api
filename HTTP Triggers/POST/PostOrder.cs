@@ -15,7 +15,6 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using WsiApi.Data;
 using WsiApi.Models;
-using WsiApi.Models;
 
 namespace WsiApi.HTTP_Triggers.POST
 {
