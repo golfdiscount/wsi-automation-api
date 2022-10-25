@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WsiApi.Models.Address
+namespace WsiApi.Models
 {
     public class AddressModel
     {

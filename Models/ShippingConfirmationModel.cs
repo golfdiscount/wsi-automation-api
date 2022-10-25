@@ -1,15 +1,15 @@
 ﻿using System;
 
-namespace WsiApi.Models.ShippingConfirmation
+namespace WsiApi.Models
 {
-    public class GetShippingConfirmationModel
+    public class ShippingConfirmationModel
     {
         public string PickticketNumber { get; set; }
-        
+
         public int LineNumber { get; set; }
 
         public DateTime ShipDate { get; set; }
-        
+
         public string TrackingNumber { get; set; }
 
         public string ShippingMethod { get; set; }

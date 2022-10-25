@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WsiApi.Models.Detail
+namespace WsiApi.Models
 {
     public class DetailModel
     {
