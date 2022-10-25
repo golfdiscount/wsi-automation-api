@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using WsiApi.Models.Detail;
+using WsiApi.Models;
 
 namespace WsiApi.Data
 {
@@ -9,14 +9,12 @@ namespace WsiApi.Data
         private static readonly string Select = @"SELECT * FROM [detail] WHERE [detail].[pick_ticket_number] = @number";
         private static readonly string Insert = @"INSERT INTO [detail] (pick_ticket_number, line_number, action, sku, units, units_to_ship)
             VALUES (@pick_ticket_number, @line_number, @action, @sku, @quantity, @units_to_ship);";
-        public static List<GetDetailModel> GetDetails(string pickticketNumber, SqlConnection conn)
+        public static List<DetailModel> GetDetails(string pickticketNumber, string connectionString)
         {
-            List<GetDetailModel> details = new();
+            List<DetailModel> details = new();
 
-            if (conn.State != System.Data.ConnectionState.Open)
-            {
-                conn.Open();
-            }
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
 
             using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.Add("@number", System.Data.SqlDbType.VarChar).Value = pickticketNumber;
@@ -34,7 +32,7 @@ namespace WsiApi.Data
 
             while (reader.Read())
             {
-                GetDetailModel detail = new()
+                DetailModel detail = new()
                 {
                     PickticketNumber = reader.GetString(pickticketIdx),
                     LineNumber = reader.GetInt32(lineNumberIdx),
@@ -52,10 +50,11 @@ namespace WsiApi.Data
             return details;
         }
 
-        public static void InsertDetail(DetailModel detail, SqlConnection conn, SqlTransaction transaction)
+        public static void InsertDetail(DetailModel detail, string connectionString)
         {
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
             using SqlCommand cmd = new(Insert, conn);
-            cmd.Transaction = transaction;
 
             cmd.Parameters.AddWithValue("@pick_ticket_number", detail.PickticketNumber);
             cmd.Parameters.AddWithValue("@line_number", detail.LineNumber);

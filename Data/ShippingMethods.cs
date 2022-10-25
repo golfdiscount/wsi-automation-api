@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using WsiApi.Models.ShippingMethod;
+using WsiApi.Models;
 
 namespace WsiApi.Data
 {
@@ -8,10 +8,10 @@ namespace WsiApi.Data
     {
         private static readonly string Select = @"SELECT * FROM [shipping_method]";
 
-        public static List<GetShippingMethodModel> GetShippingMethods(string cs)
+        public static List<ShippingMethodModel> GetShippingMethods(string cs)
         {
             using SqlConnection conn = new(cs);
-            List<GetShippingMethodModel> shippingMethods = new();
+            List<ShippingMethodModel> shippingMethods = new();
             using SqlCommand cmd = new(Select, conn);
             conn.Open();
 
@@ -24,7 +24,7 @@ namespace WsiApi.Data
 
             while (reader.Read())
             {
-                GetShippingMethodModel method = new()
+                ShippingMethodModel method = new()
                 {
                     Code = reader.GetString(codeIdx),
                     Description = reader.GetString(descriptionIdx),
@@ -38,7 +38,7 @@ namespace WsiApi.Data
             return shippingMethods;
         }
 
-        public static GetShippingMethodModel GetShippingMethods(string code, string cs)
+        public static ShippingMethodModel GetShippingMethods(string code, string cs)
         {
             using SqlConnection conn = new(cs);
             using SqlCommand cmd = new(Select + " WHERE [shipping_method].[code] = @code", conn);
@@ -59,38 +59,12 @@ namespace WsiApi.Data
 
             reader.Read();
             
-            return new GetShippingMethodModel()
+            return new ShippingMethodModel()
             {
                 Code = reader.GetString(codeIdx),
                 Description = reader.GetString(descriptionIdx),
                 Created_at = reader.GetDateTime(createdIdx),
                 Updated_at = reader.GetDateTime(updatedIdx)
-            };
-        }
-
-        public static ShippingMethodModel GetBasicShippingMethod(string code, string cs)
-        {
-            using SqlConnection conn = new(cs);
-            using SqlCommand cmd = new(Select + " WHERE [shipping_method].[code] = @code", conn);
-            cmd.Parameters.Add("@code", System.Data.SqlDbType.VarChar).Value = code;
-            conn.Open();
-
-            using SqlDataReader reader = cmd.ExecuteReader();
-
-            int codeIdx = reader.GetOrdinal("code");
-            int descriptionIdx = reader.GetOrdinal("description");
-
-            if (!reader.HasRows)
-            {
-                return null;
-            }
-
-            reader.Read();
-
-            return new ShippingMethodModel()
-            {
-                Code = reader.GetString(codeIdx),
-                Description = reader.GetString(descriptionIdx)
             };
         }
     }

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
-using WsiApi.Models.Address;
+using WsiApi.Models;
 
 namespace WsiApi.Data
 {
@@ -12,12 +12,10 @@ namespace WsiApi.Data
             VALUES (@name, @street, @city, @state, @country, @zip);
             SELECT CONVERT(INT, SCOPE_IDENTITY());";
 
-        public static AddressModel GetAddress(int id, SqlConnection conn)
+        public static AddressModel GetAddress(int id, string connectionString)
         {
-            if (conn.State == System.Data.ConnectionState.Closed)
-            {
-                conn.Open();
-            }
+            SqlConnection conn = new(connectionString);
+            conn.Open();
 
             using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.Add("@id", System.Data.SqlDbType.Int).Value = id;
@@ -50,10 +48,11 @@ namespace WsiApi.Data
             return address;
         }
 
-        public static int InsertAddress(AddressModel address, SqlConnection conn, SqlTransaction transaction)
+        public static int InsertAddress(AddressModel address, string connectionString)
         {
+            SqlConnection conn = new(connectionString);
             using SqlCommand cmd = new(Insert, conn);
-            cmd.Transaction = transaction;
+            conn.Open();
 
             cmd.Parameters.Add("@name", System.Data.SqlDbType.VarChar).Value = address.Name;
             cmd.Parameters.Add("@street", System.Data.SqlDbType.VarChar).Value = address.Street;
@@ -63,7 +62,7 @@ namespace WsiApi.Data
             cmd.Parameters.Add("@zip", System.Data.SqlDbType.VarChar).Value = address.Zip;
 
             object result = cmd.ExecuteScalar();
-            int insertId = (Int32)result;
+            int insertId = (int)result;
             return insertId;
         }
     }

@@ -9,12 +9,10 @@ namespace WsiApi.Data
         private static readonly string Insert = @"INSERT INTO [header] (pick_ticket_number, order_number, store, customer, recipient, shipping_method, order_date, channel)
             VALUES (@pick_ticket_number, @order_number, @store, @customer, @recipient, @shipping_method, @order_date, @channel);";
 
-        public static HeaderModel GetHeader(string orderNumber, SqlConnection conn)
+        public static HeaderModel GetHeader(string orderNumber, string connectionString)
         {
-            if (conn.State != System.Data.ConnectionState.Open)
-            {
-                conn.Open();
-            }
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
 
             using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.AddWithValue("@number", orderNumber);
@@ -58,10 +56,11 @@ namespace WsiApi.Data
             return header;
         }
     
-        public static void InsertHeader(HeaderModel header, SqlConnection conn, SqlTransaction transaction)
+        public static void InsertHeader(HeaderModel header, string connectionString)
         {
+            SqlConnection conn = new(connectionString);
+            conn.Open();
             using SqlCommand cmd = new(Insert, conn);
-            cmd.Transaction = transaction;
 
             cmd.Parameters.Add("@pick_ticket_number", System.Data.SqlDbType.VarChar).Value = header.PickticketNumber;
             cmd.Parameters.Add("@order_number", System.Data.SqlDbType.VarChar).Value = header.OrderNumber;
