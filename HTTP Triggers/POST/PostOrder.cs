@@ -100,7 +100,7 @@ namespace WsiApi.HTTP_Triggers.POST
                         {
                             Name = fields[12].Replace("\"", ""),
                             Street = fields[13].Replace("\"", ""),
-                            City = fields[14],
+                            City = fields[14].Replace("\"", ""),
                             State = fields[15],
                             Country = fields[16],
                             Zip = fields[17]
@@ -109,7 +109,7 @@ namespace WsiApi.HTTP_Triggers.POST
                         {
                             Name = fields[19].Replace("\"", ""),
                             Street = fields[20].Replace("\"", ""),
-                            City = fields[21],
+                            City = fields[21].Replace("\"", ""),
                             State = fields[22],
                             Country = fields[23],
                             Zip = fields[24]
