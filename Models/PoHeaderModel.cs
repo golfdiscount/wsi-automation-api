@@ -8,10 +8,6 @@ namespace WsiApi.Models
 
         public char Action { get; set; }
 
-        public DateTime PoDate { get; set; }
-
-        public DateTime DeliveryDate { get; set; }
-
         public DateTime CreatedAt { get; set; }
 
         public DateTime UpdatedAt { get; set; }
