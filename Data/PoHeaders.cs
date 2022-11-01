@@ -6,8 +6,8 @@ namespace WsiApi.Data
     public static class PoHeaders
     {
         private static readonly string Select = @"SELECT * FROM [po_header] WHERE [po_header].[po_number] = @po_number;";
-        private static readonly string Insert = @"INSERT INTO [po_header] (po_number, po_date, delivery_date)
-            VALUES (@po_number, @po_date, @delivery_date);";
+        private static readonly string Insert = @"INSERT INTO [po_header] (po_number)
+            VALUES (@po_number);";
 
         public static PoHeaderModel GetHeader(string po_number, string connectionString)
         {
@@ -26,8 +26,6 @@ namespace WsiApi.Data
 
             int poNumberIdx = reader.GetOrdinal("po_number");
             int actionIdx = reader.GetOrdinal("action");
-            int poDateIdx = reader.GetOrdinal("po_date");
-            int deliveryDateIdx = reader.GetOrdinal("delivery_date");
             int createdAtIdx = reader.GetOrdinal("created_at");
             int updatedAtIdx = reader.GetOrdinal("updated_at");
 
@@ -37,8 +35,6 @@ namespace WsiApi.Data
             {
                 PoNumber = reader.GetString(poNumberIdx),
                 Action = reader.GetString(actionIdx)[0],
-                PoDate = reader.GetDateTime(poDateIdx),
-                DeliveryDate = reader.GetDateTime(deliveryDateIdx),
                 CreatedAt = reader.GetDateTime(createdAtIdx),
                 UpdatedAt = reader.GetDateTime(updatedAtIdx)
             };
@@ -52,8 +48,6 @@ namespace WsiApi.Data
             using SqlCommand cmd = new(Insert, conn);
 
             cmd.Parameters.AddWithValue("@po_number", header.PoNumber);
-            cmd.Parameters.AddWithValue("@po_date", header.PoDate);
-            cmd.Parameters.AddWithValue("@delivery_date", header.DeliveryDate);
 
             cmd.ExecuteScalar();
         }
