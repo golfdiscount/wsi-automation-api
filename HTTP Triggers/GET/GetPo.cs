@@ -6,7 +6,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using WsiApi.Data;
 using WsiApi.Models;
 
@@ -28,17 +27,21 @@ namespace WsiApi.HTTP_Triggers.GET
             string poNumber,
             ILogger log)
         {
-            log.LogInformation($"Seaching for PO {poNumber}");
+            log.LogInformation($"Searching for PO {poNumber}");
 
             PoHeaderModel header = PoHeaders.GetHeader(poNumber, cs);
+
+            if (header == null)
+            {
+                return new NotFoundResult();
+            }
+
             List<PoDetailModel> details = PoDetails.GetDetail(poNumber, cs);
 
             PoModel po = new()
             {
                 PoNumber = header.PoNumber,
                 Action = header.Action,
-                PoDate = header.PoDate,
-                DeliveryDate = header.DeliveryDate,
                 CreatedAt = header.CreatedAt,
                 UpdatedAt = header.UpdatedAt,
                 LineItems = new()
@@ -57,10 +60,6 @@ namespace WsiApi.HTTP_Triggers.GET
             public string PoNumber { get; set; }
 
             public char Action { get; set; }
-
-            public DateTime PoDate { get; set; }
-
-            public DateTime DeliveryDate { get; set; }
 
             public DateTime CreatedAt { get; set; }
 
