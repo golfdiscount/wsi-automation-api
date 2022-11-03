@@ -50,6 +50,10 @@ must at a minimum have `GET` permissions for KeyVault secrets.**
 
 ## Blob Triggers
 
+### SftpBlob
+Triggers on the storage path `sftp/{name}` and initiates SFTP for the blob to WSI at the path
+`SFTP_ROOT/{name}` where `SFTP_ROOT` is specified by an environment variable as described above.
+
 ## HTTP Triggers
 
 ## Queue Triggers
