@@ -110,4 +110,12 @@ CSV creation at the function `OrderCsvCreation`.
 
 ## Queue Triggers
 
+### OrderCsvCreation
+Triggers for messages in the queue `order-csv-creation`. The messages should be an order number
+to generate a CSV for. Once the CSV is generated, it will be queued for SFTP via the function
+`SftpBlob`.
+
+### SendEmail
+Triggers for messages in the queue `send-email`. The messages should be in the format specified by `WsiApi.Models.SendGrid.SendGridMessageModel`.
+
 ## Timer Triggers
