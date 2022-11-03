@@ -56,6 +56,58 @@ Triggers on the storage path `sftp/{name}` and initiates SFTP for the blob to WS
 
 ## HTTP Triggers
 
+### GET
+
+#### GetOrder
+Triggers on the HTTP path `orders/{orderNumber}` and returns a JSON object representing a WSI order.
+
+##### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | An order was found and returned |
+| 404 | An order was not found for the provided order number |
+
+#### GetPo
+Triggers on the HTTP path `pos/{poNumber}` and returns a JSON object representing PO information.
+
+##### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | An PO was found and returned |
+| 404 | An PO was not found for the provided order number |
+
+#### GetShippingMethod
+Triggers on the HTTP path `shipping/{code:alpha?}` and returns a JSON object representing
+shipping method information. If `code` is not specified, returns a listing of all shipping
+methods.
+
+##### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | A shipping method was found and returned |
+| 404 | A shipping method was not found for the provided shipping code |
+
+#### GetStore
+Triggers on the HTTP path `stores/{id:int?}` and returns a JSON object representing
+store information. if `id` is not specified, returns a listing of all stores.
+
+##### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | A store was found and returned |
+| 404 | A store was not found for the provided store id |
+
+### POST
+
+#### PostOrder
+Triggers on the path `orders` and creates a new WSI order in the database and queues it for
+CSV creation at the function `OrderCsvCreation`.
+
+| Code | Description |
+| ---- | ----------- |
+| 202 | The order was successfully created |
+| 400 | A bad request was submitted. This could either happen because:of formatting errors, a set of required attributes was not given, or a missing Content-Type header. |
+
 ## Queue Triggers
 
 ## Timer Triggers
