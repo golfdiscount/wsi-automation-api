@@ -61,6 +61,62 @@ Triggers on the storage path `sftp/{name}` and initiates SFTP for the blob to WS
 #### GetOrder
 Triggers on the HTTP path `orders/{orderNumber}` and returns a JSON object representing a WSI order.
 
+##### Response Body
+```json
+{
+    "pickticketNumber": Unique pickticket number,
+    "orderNumber": Original order number from Magento,
+    "action": Order action (typically I for insert),
+    "store": {
+        "name": "Pro Golf Internet",
+        "street": "13405 SE 30th St Suite 1A",
+        "city": "Bellevue",
+        "state": "WA",
+        "country": "US",
+        "zip": "98005",
+        "storeNumber": 1
+    },
+    "customer": {
+        "name": Customer name,
+        "street": Customer street address,
+        "city": Customer city,
+        "state": Customer state,
+        "country": Customer country,
+        "zip": Customer zip code
+    },
+    "recipient": {
+        "name": Recipient name,
+        "street": Recipient street address,
+        "city": Recipient city,
+        "state": Recipient state,
+        "country": Recipient country,
+        "zip": Recipient zip code
+    },
+    "shippingMethod": {
+        "code": "FDXH",
+        "description": "FedEx Home Delivery",
+        "created_at": "2022-08-04T23:47:04.59",
+        "updated_at": "2022-08-04T23:47:04.59"
+    },
+    "lineItems": [
+        {
+            "pickticketNumber": Unique pickticket number,
+            "lineNumber": Line number,
+            "action": Line action (typically I for insert),
+            "sku": Product SKU,
+            "units": Quantity ordered,
+            "unitsToShip": Quantity authorized to ship,
+            "created_at": Date created,
+            "updated_at": Date last updated
+        }
+    ],
+    "orderDate": Order date,
+    "channel": Channel number,
+    "createdAt": Date created,
+    "updatedAt": Date updated
+}
+```
+
 ##### Expected Return Codes
 | Code | Description |
 | ---- | ----------- |
@@ -81,6 +137,35 @@ Triggers on the HTTP path `shipping/{code:alpha?}` and returns a JSON object rep
 shipping method information. If `code` is not specified, returns a listing of all shipping
 methods.
 
+##### Response Body
+```json
+{
+    "code": "FDXH",
+    "description": "FedEx Home Delivery",
+    "created_at": "2022-08-04T23:47:04.59",
+    "updated_at": "2022-08-04T23:47:04.59"
+}
+```
+
+or
+
+```json
+[
+  {
+    "code": "FDXH",
+    "description": "FedEx Home Delivery",
+    "created_at": "2022-08-04T23:47:04.59",
+    "updated_at": "2022-08-04T23:47:04.59"
+  },
+  {
+      "code": "FDSO",
+      "description": "FedEx Standard Overnight",
+      "created_at": "2022-08-04T23:47:04.59",
+      "updated_at": "2022-08-04T23:47:04.59"
+  }
+]
+```
+
 ##### Expected Return Codes
 | Code | Description |
 | ---- | ----------- |
@@ -90,6 +175,46 @@ methods.
 #### GetStore
 Triggers on the HTTP path `stores/{id:int?}` and returns a JSON object representing
 store information. if `id` is not specified, returns a listing of all stores.
+
+##### Response Body
+```json
+[
+    {
+        "name": "Pro Golf Internet",
+        "street": "13405 SE 30th St Suite 1A",
+        "city": "Bellevue",
+        "state": "WA",
+        "country": "US",
+        "zip": "98005",
+        "storeNumber": 1
+    }
+]
+```
+
+or
+
+```json
+[
+  {
+      "name": "Pro Golf Internet",
+      "street": "13405 SE 30th St Suite 1A",
+      "city": "Bellevue",
+      "state": "WA",
+      "country": "US",
+      "zip": "98005",
+      "storeNumber": 1
+  },
+  {
+      "name": "Pro Golf Lynnwood",
+      "street": "19125 33rd Ave W A",
+      "city": "Lynnwood",
+      "state": "WA",
+      "country": "US",
+      "zip": "98036",
+      "storeNumber": 2
+  }
+]
+```
 
 ##### Expected Return Codes
 | Code | Description |
@@ -106,7 +231,7 @@ CSV creation at the function `OrderCsvCreation`.
 | Code | Description |
 | ---- | ----------- |
 | 202 | The order was successfully created |
-| 400 | A bad request was submitted. This could either happen because:of formatting errors, a set of required attributes was not given, or a missing Content-Type header. |
+| 400 | A bad request was submitted. This could either happen because of: JSOB body formatting errors, a set of required attributes was not given, or a missing Content-Type header. |
 
 ## Queue Triggers
 
