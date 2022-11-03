@@ -64,56 +64,56 @@ Triggers on the HTTP path `orders/{orderNumber}` and returns a JSON object repre
 ##### Response Body
 ```json
 {
-    "pickticketNumber": Unique pickticket number,
-    "orderNumber": Original order number from Magento,
-    "action": Order action (typically I for insert),
-    "store": {
-        "name": "Pro Golf Internet",
-        "street": "13405 SE 30th St Suite 1A",
-        "city": "Bellevue",
-        "state": "WA",
-        "country": "US",
-        "zip": "98005",
-        "storeNumber": 1
-    },
-    "customer": {
-        "name": Customer name,
-        "street": Customer street address,
-        "city": Customer city,
-        "state": Customer state,
-        "country": Customer country,
-        "zip": Customer zip code
-    },
-    "recipient": {
-        "name": Recipient name,
-        "street": Recipient street address,
-        "city": Recipient city,
-        "state": Recipient state,
-        "country": Recipient country,
-        "zip": Recipient zip code
-    },
-    "shippingMethod": {
-        "code": "FDXH",
-        "description": "FedEx Home Delivery",
-        "created_at": "2022-08-04T23:47:04.59",
-        "updated_at": "2022-08-04T23:47:04.59"
-    },
-    "lineItems": [
-        {
-            "pickticketNumber": Unique pickticket number,
-            "lineNumber": Line number,
-            "action": Line action (typically I for insert),
-            "sku": Product SKU,
-            "units": Quantity ordered,
-            "unitsToShip": Quantity authorized to ship,
-            "created_at": Date created,
-            "updated_at": Date last updated
-        }
-    ],
-    "orderDate": Order date,
-    "channel": Channel number,
-    "createdAt": Date created,
-    "updatedAt": Date updated
+  "pickticketNumber": "Unique pickticket number",
+  "orderNumber": "Original order number from Magento",
+  "action": "Order action (typically I for insert)",
+  "store": {
+      "name": "Pro Golf Internet",
+      "street": "13405 SE 30th St Suite 1A",
+      "city": "Bellevue",
+      "state": "WA",
+      "country": "US",
+      "zip": "98005",
+      "storeNumber": 1
+  },
+"customer": {
+      "name": "Customer name",
+      "street": "Customer street address",
+      "city": "Customer city",
+      "state": "Customer state",
+      "country": "Customer country",
+      "zip": "Customer zip code"
+  },
+  "recipient": {
+      "name": "Recipient name",
+      "street": "Recipient street address",
+      "city": "Recipient city",
+      "state": "Recipient state",
+      "country": "Recipient country",
+      "zip": "Recipient zip code"
+  },
+  "shippingMethod": {
+      "code": "FDXH",
+      "description": "FedEx Home Delivery",
+      "created_at": "2022-08-04T23:47:04.59",
+      "updated_at": "2022-08-04T23:47:04.59"
+  },
+  "lineItems": [
+      {
+          "pickticketNumber": "Unique pickticket number",
+          "lineNumber": "Line number",
+          "action": "Line action (typically I for insert)",
+          "sku": "Product SKU",
+          "units": "Quantity ordered",
+          "unitsToShip": "Quantity authorized to ship",
+          "created_at": "Date created",
+          "updated_at": "Date last updated"
+      }
+  ],
+  "orderDate": "Order date",
+  "channel": "Channel number",
+  "createdAt": "Date created",
+  "updatedAt": "Date updated"
 }
 ```
 
@@ -228,6 +228,50 @@ or
 Triggers on the path `orders` and creates a new WSI order in the database and queues it for
 CSV creation at the function `OrderCsvCreation`.
 
+##### Content-Types
+This route accepts two content types:
+- application/json
+- text/csv
+
+`application/json` is used when submitting a singular order via a JSON body. This is typically
+done via Postman or the order interface on the [Golf Discount Intranet](http://inet.golfdiscount.com).
+
+`text/csv` is used when submitting a CSV of orders formatted to WSI's specification. This is
+typically done when taking orders created by Magento and uploading them to this route.
+
+##### Request Body
+```json
+{
+  "orderNumber": "Order number from Magento",
+  "store": 1,
+  "customer": {
+      "name": "Customer name",
+      "street": "Customer street address",
+      "city": "Customer city",
+      "state": "Customer state",
+      "country": "Customer country",
+      "zip": "Customer zip code"
+  },
+  "recipient": {
+      "name": "Recipient name",
+      "street": "Recipient street address",
+      "city": "Recipient city",
+      "state": "Recipient state",
+      "country": "Recipient country",
+      "zip": "Recipient zip code"
+  },
+  "shippingMethod": "FDXH",
+  "orderDate": "Date of order",
+  "products": [
+      {
+          "sku": "Product SKU",
+          "quantity": "Quantity ordered"
+      }
+  ]
+}
+```
+
+##### Expected Return Codes
 | Code | Description |
 | ---- | ----------- |
 | 202 | The order was successfully created |
