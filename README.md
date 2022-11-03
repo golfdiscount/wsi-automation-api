@@ -116,6 +116,24 @@ to generate a CSV for. Once the CSV is generated, it will be queued for SFTP via
 `SftpBlob`.
 
 ### SendEmail
-Triggers for messages in the queue `send-email`. The messages should be in the format specified by `WsiApi.Models.SendGrid.SendGridMessageModel`.
+Triggers for messages in the queue `send-email`. The messages should be in the format specified
+by `WsiApi.Models.SendGrid.SendGridMessageModel`.
 
 ## Timer Triggers
+
+### GeneratePos
+Triggers at the CRONTAB expression `0 0 3 * * *`. A CSV of master PO records is pulled from the
+path `dufferscorner-uri/media/WSI_PO.csv`. Another CSV of open WSI POs is pulled from
+`dufferscorner-uri/media/wsi_daily_po.csv`. These two CSVs are compared and for open POs, the
+CSVs are generated and queued for SFTP via `SftpBlob`.
+
+### GenerateWsiMasterSkuList
+Triggers at the CRONTAB expression `0 0 */3 * * *`. A CSV of all SKUs that should be at WSI is
+pulled from `dufferscorner-uri/media/wsi_master_skus.csv`. A CSV is generated and then queued
+for SFTP via `SftpBlob`.
+
+### ProcessShippingConfirmations
+Triggers at the CRONTAB expression `0 0 20 * * *`. Daily, WSI creates CSVs with tracking numbers
+for orders shipped out that day. This function processes those CSVs and marks the orders as
+shipped in ShipStation. Emails listed in the `recipients` property are emailed a summary
+of SKUs shipped and tracking numbers for each order.
