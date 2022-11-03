@@ -39,4 +39,4 @@ jobs:
           app-name: 'func-wsi-staging-westus-001'
           slot-name: 'Production'
           package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_79707C77DC55439FB0695D2FFAA1D8A1 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_345DCAF0A13B4A0996C56F54BAD42D8F }}

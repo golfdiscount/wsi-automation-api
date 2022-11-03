@@ -1,7 +1,7 @@
 ﻿using SendGrid.Helpers.Mail;
 using System.Collections.Generic;
 
-namespace wsi_triggers.Models.SendGrid
+namespace WsiApi.Models.SendGrid
 {
     public class SendGridMessageModel
     {

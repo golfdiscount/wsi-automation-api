@@ -4,7 +4,7 @@ using Renci.SshNet;
 using System;
 using System.IO;
 
-namespace wsi_triggers.Blob_Triggers
+namespace WsiApi.Blob_Triggers
 {
     public class SftpBlob
     {

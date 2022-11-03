@@ -4,12 +4,12 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
-using wsi_triggers.Data;
-using wsi_triggers.Models;
-using wsi_triggers.Models.Order;
+using WsiApi.Data;
+using WsiApi.Models;
 
-namespace wsi_triggers.HTTP_Triggers.GET
+namespace WsiApi.HTTP_Triggers.GET
 {
     public class GetOrder
     {
@@ -26,25 +26,24 @@ namespace wsi_triggers.HTTP_Triggers.GET
             ILogger log)
         {
             log.LogInformation($"Searching database for order {orderNumber}");
-            using SqlConnection conn = new(cs);
 
-            HeaderModel header = Headers.GetHeader(orderNumber, conn);
+            HeaderModel header = Headers.GetHeader(orderNumber, cs);
 
             if (header == null)
             {
                 return new NotFoundResult();
             }
 
-            GetOrderModel order = new()
+            OrderModel order = new()
             {
                 PickticketNumber = header.PickticketNumber,
                 OrderNumber = header.OrderNumber,
                 Action = header.Action,
                 Store = Stores.GetStore(header.Store, cs)[0],
-                Customer = Addresses.GetAddress(header.Customer, conn),
-                Recipient = Addresses.GetAddress(header.Recipient, conn),
-                ShippingMethod = ShippingMethods.GetBasicShippingMethod(header.ShippingMethod, cs),
-                LineItems = Details.GetDetails(header.PickticketNumber, conn),
+                Customer = Addresses.GetAddress(header.Customer, cs),
+                Recipient = Addresses.GetAddress(header.Recipient, cs),
+                ShippingMethod = ShippingMethods.GetShippingMethods(header.ShippingMethod, cs),
+                LineItems = Details.GetDetails(header.PickticketNumber, cs),
                 OrderDate = header.OrderDate,
                 Channel = header.Channel,
                 CreatedAt = header.CreatedAt,
@@ -52,6 +51,33 @@ namespace wsi_triggers.HTTP_Triggers.GET
             };
 
             return new OkObjectResult(order);           
+        }
+
+        private class OrderModel
+        {
+            public string PickticketNumber { get; set; }
+
+            public string OrderNumber { get; set; }
+
+            public char Action { get; set; }
+
+            public StoreModel Store { get; set; }
+
+            public AddressModel Customer { get; set; }
+
+            public AddressModel Recipient { get; set; }
+
+            public ShippingMethodModel ShippingMethod { get; set; }
+
+            public List<DetailModel> LineItems { get; set; }
+
+            public DateTime OrderDate { get; set; }
+
+            public int Channel { get; set; }
+
+            public DateTime CreatedAt { get; set; }
+
+            public DateTime UpdatedAt { get; set; }
         }
     }
 }

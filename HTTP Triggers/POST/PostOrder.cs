@@ -13,13 +13,11 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web.Http;
-using wsi_triggers.Data;
-using wsi_triggers.Models.Order;
-using wsi_triggers.Models;
-using wsi_triggers.Models.Detail;
+using WsiApi.Data;
+using WsiApi.Models;
 
-namespace wsi_triggers.HTTP_Triggers.POST
-{    
+namespace WsiApi.HTTP_Triggers.POST
+{
     public class PostOrder
     {
         private readonly string cs;
@@ -27,7 +25,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
         private readonly BlobServiceClient blobServiceClient;
         private readonly QueueServiceClient queueServiceClient;
 
-        public PostOrder(SqlConnectionStringBuilder builder, 
+        public PostOrder(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
             QueueServiceClient queueServiceClient,
             BlobServiceClient blobServiceClient)
@@ -39,30 +37,25 @@ namespace wsi_triggers.HTTP_Triggers.POST
         }
 
         [FunctionName("PostOrder")]
-        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req, 
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req,
             ILogger log)
         {
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd().Trim();
 
-            using SqlConnection conn = new(cs);
-            conn.Open();
-            log.LogInformation("Beginning transaction");
-            SqlTransaction transaction = conn.BeginTransaction();
-
             if (req.ContentType == "application/json")
             {
                 try
                 {
-                    PostOrderModel order = JsonSerializer.Deserialize<PostOrderModel>(requestContents, jsonOptions);
-                    InsertOrder(conn, transaction, order);
+                    OrderModel order = JsonSerializer.Deserialize<OrderModel>(requestContents, jsonOptions);
+                    order.Channel = 2; // TODO: Remove channel hardcoding
+                    InsertOrder(order);
 
                     QueueClient orderCsvCreationQueue = queueServiceClient.GetQueueClient("order-csv-creation");
                     log.LogInformation($"Queuing {order.OrderNumber} for CSV creation");
                     await orderCsvCreationQueue.SendMessageAsync(order.OrderNumber);
 
                     log.LogInformation("Commiting transaction");
-                    await transaction.CommitAsync();
                     return new CreatedResult("", order);
                 } catch (ValidationException e)
                 {
@@ -75,17 +68,16 @@ namespace wsi_triggers.HTTP_Triggers.POST
                 } catch (Exception e)
                 {
                     log.LogWarning("Rolling back transaction");
-                    await transaction.RollbackAsync();
                     log.LogCritical(e.Message);
                     throw;
                 }
-            } 
+            }
             else if (req.ContentType == "text/csv")
             {
-                Dictionary<string, PostOrderModel> orders = new();
+                Dictionary<string, OrderModel> orders = new();
                 string[] records = requestContents.Split("\n");
 
-                foreach(string record in records)
+                foreach (string record in records)
                 {
                     string[] fields = record.Split(',');
                     string recordType = fields[0];
@@ -95,9 +87,10 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     {
                         orders.Add(pickticketNum, new());
                         orders[pickticketNum].Products = new();
+                        orders[pickticketNum].Channel = 1;
                     }
 
-                    PostOrderModel order = orders[pickticketNum];
+                    OrderModel order = orders[pickticketNum];
 
                     if (recordType == "PTH")
                     {
@@ -105,18 +98,18 @@ namespace wsi_triggers.HTTP_Triggers.POST
                         order.OrderDate = DateTime.ParseExact(fields[5], "MM/dd/yyyy", null);
                         order.Customer = new()
                         {
-                            Name = fields[12],
-                            Street = fields[13],
-                            City = fields[14],
+                            Name = fields[12].Replace("\"", ""),
+                            Street = fields[13].Replace("\"", ""),
+                            City = fields[14].Replace("\"", ""),
                             State = fields[15],
                             Country = fields[16],
                             Zip = fields[17]
                         };
                         order.Recipient = new()
                         {
-                            Name = fields[19],
-                            Street = fields[20],
-                            City = fields[21],
+                            Name = fields[19].Replace("\"", ""),
+                            Street = fields[20].Replace("\"", ""),
+                            City = fields[21].Replace("\"", ""),
                             State = fields[22],
                             Country = fields[23],
                             Zip = fields[24]
@@ -138,7 +131,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     foreach (var order in orders)
                     {
                         log.LogInformation($"Inserting {order.Value.OrderNumber} into the database");
-                        InsertOrder(conn, transaction, order.Value); // TODO: Change channel to 1 (for Magento) when inserting into DB
+                        InsertOrder(order.Value);
                     }
 
                     BinaryData csvContents = new(requestContents);
@@ -149,15 +142,12 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     await sftpContainer.UploadBlobAsync(fileName, csvContents);
 
                     log.LogInformation("Commiting transaction");
-                    await transaction.CommitAsync();
                 } catch (ValidationException e)
                 {
                     log.LogWarning(e.ValidationResult.ErrorMessage);
                     return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
                 } catch (Exception e)
                 {
-                    log.LogWarning("Rolling back transaction");
-                    await transaction.RollbackAsync();
                     log.LogCritical(e.Message);
                     throw;
                 }
@@ -169,7 +159,42 @@ namespace wsi_triggers.HTTP_Triggers.POST
             return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
         }
 
-        private static void InsertOrder(SqlConnection conn, SqlTransaction transaction, PostOrderModel order)
+        private class OrderModel
+        {
+            [Required]
+            public string OrderNumber { get; set; }
+
+            [Required]
+            public int Store { get; set; }
+
+            [Required]
+            public AddressModel Customer { get; set; }
+
+            [Required]
+            public AddressModel Recipient { get; set; }
+
+            [Required]
+            public string ShippingMethod { get; set; }
+
+            [Required]
+            public DateTime OrderDate { get; set; }
+
+            [Required]
+            public List<LineItemModel> Products { get; set; }
+
+            public int Channel { get; set; }
+        }
+
+        private class LineItemModel
+        {
+            [Required]
+            public string Sku { get; set; }
+
+            [Required]
+            public int Quantity { get; set; }
+        }
+
+        private void InsertOrder(OrderModel order)
         {
             try
             {
@@ -181,8 +206,8 @@ namespace wsi_triggers.HTTP_Triggers.POST
 
             try
             {
-                int customerId = Addresses.InsertAddress(order.Customer, conn, transaction);
-                int recipientId = Addresses.InsertAddress(order.Recipient, conn, transaction);
+                int customerId = Addresses.InsertAddress(order.Customer, cs);
+                int recipientId = Addresses.InsertAddress(order.Recipient, cs);
 
                 HeaderModel header = new()
                 {
@@ -194,10 +219,10 @@ namespace wsi_triggers.HTTP_Triggers.POST
                     Recipient = recipientId,
                     ShippingMethod = order.ShippingMethod,
                     OrderDate = order.OrderDate,
-                    Channel = 2
+                    Channel = order.Channel
                 };
 
-                Headers.InsertHeader(header, conn, transaction);
+                Headers.InsertHeader(header, cs);
 
                 int productCount = 0;
                 order.Products.ForEach(product =>
@@ -212,7 +237,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
                         Units = product.Quantity,
                         UnitsToShip = product.Quantity
                     };
-                    Details.InsertDetail(detail, conn, transaction);
+                    Details.InsertDetail(detail, cs);
                 });
             }
             catch (Exception)
@@ -221,7 +246,7 @@ namespace wsi_triggers.HTTP_Triggers.POST
             }
         }
 
-        private static void ValidateOrder(PostOrderModel order)
+        private static void ValidateOrder(OrderModel order)
         {
             ValidationContext validationContext = new(order);
             Validator.ValidateObject(order, validationContext, true);

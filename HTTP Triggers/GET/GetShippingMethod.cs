@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using wsi_triggers.Data;
-using wsi_triggers.Models.ShippingMethod;
+using WsiApi.Data;
+using WsiApi.Models;
 
-namespace wsi_triggers.HTTP_Triggers
+namespace WsiApi.HTTP_Triggers
 {
     public class GetShippingMethod
     {
@@ -26,7 +26,7 @@ namespace wsi_triggers.HTTP_Triggers
         {
             if (code != null)
             {
-                GetShippingMethodModel method = ShippingMethods.GetShippingMethods(code, cs);
+                ShippingMethodModel method = ShippingMethods.GetShippingMethods(code, cs);
 
                 if (method == null)
                 {
@@ -36,7 +36,7 @@ namespace wsi_triggers.HTTP_Triggers
                 return new OkObjectResult(method);
             }
 
-            List<GetShippingMethodModel> methods = ShippingMethods.GetShippingMethods(cs);
+            List<ShippingMethodModel> methods = ShippingMethods.GetShippingMethods(cs);
             return new OkObjectResult(methods);
         }
     }

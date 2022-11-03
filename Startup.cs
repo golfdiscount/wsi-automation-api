@@ -10,9 +10,9 @@ using System;
 using System.Text;
 using System.Text.Json;
 
-[assembly: FunctionsStartup(typeof(wsi_triggers.Startup))]
+[assembly: FunctionsStartup(typeof(WsiApi.Startup))]
 
-namespace wsi_triggers
+namespace WsiApi
 {
     public class Startup : FunctionsStartup
     {

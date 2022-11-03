@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace wsi_triggers.Timer_Triggers
+namespace WsiApi.Timer_Triggers
 {
     public class GenerateWsiMasterSkuList
     {
