@@ -23,7 +23,6 @@ The key points are as follows:
 
 - AzureWebJobsStorage: The URI for the storage account the function app can use
 - FUNCTIONS_WORKER_RUNTIME: Function worker language runtime, should be set to "dotnet"
-- SFTP_ROOT: Root directory for SFTP, should be set to "Outbound/Test" for development and staging purposes
 - VAULT_URI: URI to an Azure KeyVault holding connection string, API keys, and other sensitive materials
 - WSI_MASTER_SKU_URI: URI to a CSV file containing a master list of all SKUs that should be in WSI's inventory
 - WSI_PO_DAILY_URI: URI to a CSV file containing current open POs from Eagle that need to be sent to WSI
@@ -51,8 +50,8 @@ must at a minimum have `GET` permissions for KeyVault secrets.**
 ## Blob Triggers
 
 ### SftpBlob
-Triggers on the storage path `sftp/{name}` and initiates SFTP for the blob to WSI at the path
-`SFTP_ROOT/{name}` where `SFTP_ROOT` is specified by an environment variable as described above.
+Triggers on the blob storage path `sftp/{name}` and initiates SFTP for the blob to WSI at the path
+`Inbound/{name}`.
 
 ## HTTP Triggers
 
