@@ -38,5 +38,10 @@ namespace WsiApi.Models
                 && Country.Equals(address.Country)
                 && Zip.Equals(address.Zip);
         }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 }
