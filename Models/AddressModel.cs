@@ -21,5 +21,22 @@ namespace WsiApi.Models
 
         [Required]
         public string Zip { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || obj.GetType() != this.GetType())
+            {
+                return false;
+            }
+
+            var address = (AddressModel)obj;
+
+            return Name.Equals(address.Name)
+                && Street.Equals(address.Street)
+                && City.Equals(address.City)
+                && State.Equals(address.State)
+                && Country.Equals(address.Country)
+                && Zip.Equals(address.Zip);
+        }
     }
 }
