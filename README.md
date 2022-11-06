@@ -38,9 +38,9 @@ must at a minimum have `GET` permissions for KeyVault secrets.**
 - magento-key: API function key to Magento API
 - magento-uri: URI for magento API
 - sendgrid-key: SendGrid API key
-- shipstation-key:
-- shipstation-secret: [ShipStation API key](https://www.shipstation.com/docs/api/requirements/#authentication)
-- shipstation-uri: [ShipStation API Secret](https://www.shipstation.com/docs/api/requirements/#authentication)
+- shipstation-key:[ShipStation API key](https://www.shipstation.com/docs/api/requirements/#authentication)
+- shipstation-secret: [ShipStation API Secret](https://www.shipstation.com/docs/api/requirements/#authentication)
+- shipstation-uri: URI to ShipStation API
 - wsi-pass: Password for WSI SFTP credentials
 - wsi-uri: URI for WSI SFTP
 - wsi-user: User for WSI SFTP credentials
