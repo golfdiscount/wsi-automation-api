@@ -222,7 +222,7 @@ namespace WsiApi.HTTP_Triggers.POST
                     Channel = order.Channel
                 };
 
-                Headers.InsertHeader(header, cs);
+                PtHeaders.InsertHeader(header, cs);
 
                 int productCount = 0;
                 order.Products.ForEach(product =>
@@ -237,7 +237,7 @@ namespace WsiApi.HTTP_Triggers.POST
                         Units = product.Quantity,
                         UnitsToShip = product.Quantity
                     };
-                    Details.InsertDetail(detail, cs);
+                    PtDetails.InsertDetail(detail, cs);
                 });
             }
             catch (Exception)

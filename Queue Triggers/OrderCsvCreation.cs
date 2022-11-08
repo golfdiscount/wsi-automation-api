@@ -39,14 +39,14 @@ namespace WsiApi.Queue_Triggers
 
             using SqlConnection conn = new(cs);
             conn.Open();
-            HeaderModel header = Headers.GetHeader(orderNumber, cs);
+            HeaderModel header = PtHeaders.GetHeader(orderNumber, cs);
 
             if (header == null)
             {
                 throw new ArgumentException($"{orderNumber} does not exist in the database");
             }
 
-            List<DetailModel> details = Details.GetDetails(header.PickticketNumber, cs);
+            List<DetailModel> details = PtDetails.GetDetails(header.PickticketNumber, cs);
 
             StringBuilder orderCsv = new();
             orderCsv.AppendLine(GenerateHeader(header));
