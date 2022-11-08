@@ -4,10 +4,10 @@ using WsiApi.Models;
 
 namespace WsiApi.Data
 {
-    public static class Details
+    public static class PtDetails
     {
-        private static readonly string Select = @"SELECT * FROM [detail] WHERE [detail].[pick_ticket_number] = @number";
-        private static readonly string Insert = @"INSERT INTO [detail] (pick_ticket_number, line_number, action, sku, units, units_to_ship)
+        private static readonly string Select = @"SELECT * FROM [pt_detail] WHERE [pt_detail].[pick_ticket_number] = @number";
+        private static readonly string Insert = @"INSERT INTO [pt_detail] (pick_ticket_number, line_number, action, sku, units, units_to_ship)
             VALUES (@pick_ticket_number, @line_number, @action, @sku, @quantity, @units_to_ship);";
         public static List<DetailModel> GetDetails(string pickticketNumber, string connectionString)
         {

@@ -27,7 +27,7 @@ namespace WsiApi.HTTP_Triggers.GET
         {
             log.LogInformation($"Searching database for order {orderNumber}");
 
-            HeaderModel header = Headers.GetHeader(orderNumber, cs);
+            HeaderModel header = PtHeaders.GetHeader(orderNumber, cs);
 
             if (header == null)
             {
@@ -43,7 +43,7 @@ namespace WsiApi.HTTP_Triggers.GET
                 Customer = Addresses.GetAddress(header.Customer, cs),
                 Recipient = Addresses.GetAddress(header.Recipient, cs),
                 ShippingMethod = ShippingMethods.GetShippingMethods(header.ShippingMethod, cs),
-                LineItems = Details.GetDetails(header.PickticketNumber, cs),
+                LineItems = PtDetails.GetDetails(header.PickticketNumber, cs),
                 OrderDate = header.OrderDate,
                 Channel = header.Channel,
                 CreatedAt = header.CreatedAt,

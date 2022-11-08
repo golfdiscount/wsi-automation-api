@@ -3,10 +3,10 @@ using WsiApi.Models;
 
 namespace WsiApi.Data
 {
-    public static class Headers
+    public static class PtHeaders
     {
-        private static readonly string Select = @"SELECT * FROM [header] WHERE [header].[order_number] = @number;";
-        private static readonly string Insert = @"INSERT INTO [header] (pick_ticket_number, order_number, store, customer, recipient, shipping_method, order_date, channel)
+        private static readonly string Select = @"SELECT * FROM [pt_header] WHERE [pt_header].[order_number] = @number;";
+        private static readonly string Insert = @"INSERT INTO [pt_header] (pick_ticket_number, order_number, store, customer, recipient, shipping_method, order_date, channel)
             VALUES (@pick_ticket_number, @order_number, @store, @customer, @recipient, @shipping_method, @order_date, @channel);";
 
         public static HeaderModel GetHeader(string orderNumber, string connectionString)
