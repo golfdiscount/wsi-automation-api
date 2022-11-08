@@ -19,9 +19,10 @@ namespace WsiApi.Blob_Triggers
         {
             log.LogInformation($"Initializing SFTP for {name}");
             sftp.Connect();
+
             try
             {
-                sftp.UploadFile(blob, $"{Environment.GetEnvironmentVariable("SFTP_ROOT")}/{name}");
+                sftp.UploadFile(blob, $"Inbound/{name}");
             } catch(Exception e)
             {
                 log.LogInformation(e.Message);
