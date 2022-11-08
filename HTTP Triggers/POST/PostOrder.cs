@@ -49,6 +49,7 @@ namespace WsiApi.HTTP_Triggers.POST
                 {
                     OrderModel order = JsonSerializer.Deserialize<OrderModel>(requestContents, jsonOptions);
                     order.Channel = 2; // TODO: Remove channel hardcoding
+                    log.LogInformation($"Inserting {order.OrderNumber} into the database");
                     InsertOrder(order);
 
                     QueueClient orderCsvCreationQueue = queueServiceClient.GetQueueClient("order-csv-creation");
@@ -57,15 +58,26 @@ namespace WsiApi.HTTP_Triggers.POST
 
                     log.LogInformation("Commiting transaction");
                     return new CreatedResult("", order);
-                } catch (ValidationException e)
+                }
+                catch (ValidationException e)
                 {
                     log.LogWarning(e.ValidationResult.ErrorMessage);
                     return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
-                } catch (FormatException e)
+                }
+                catch (FormatException e)
                 {
                     log.LogWarning(e.Message);
                     return new BadRequestErrorMessageResult("Formatting error. Ensure that dates are in format YYYY-MM-DD.");
-                } catch (Exception e)
+                }
+                catch (SqlException e) 
+                { 
+                    if (e.Number == 2627) // e.Number refers to the SQL error code
+                    {
+                        log.LogInformation("Order already exists");
+                        return new BadRequestErrorMessageResult("Order already exists");
+                    }
+                }
+                catch (Exception e)
                 {
                     log.LogWarning("Rolling back transaction");
                     log.LogCritical(e.Message);
