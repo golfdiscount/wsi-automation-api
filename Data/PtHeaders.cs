@@ -58,7 +58,7 @@ namespace WsiApi.Data
     
         public static void InsertHeader(HeaderModel header, string connectionString)
         {
-            SqlConnection conn = new(connectionString);
+            using SqlConnection conn = new(connectionString);
             conn.Open();
             using SqlCommand cmd = new(Insert, conn);
 

@@ -14,7 +14,7 @@ namespace WsiApi.Data
 
         public static AddressModel GetAddress(int id, string connectionString)
         {
-            SqlConnection conn = new(connectionString);
+            using SqlConnection conn = new(connectionString);
             conn.Open();
 
             using SqlCommand cmd = new(Select, conn);
@@ -44,13 +44,12 @@ namespace WsiApi.Data
                 Zip = reader.GetString(zipIdx),
             };
 
-            conn.Close();
             return address;
         }
 
         public static int InsertAddress(AddressModel address, string connectionString)
         {
-            SqlConnection conn = new(connectionString);
+            using SqlConnection conn = new(connectionString);
             using SqlCommand cmd = new(Insert, conn);
             conn.Open();
 
@@ -63,6 +62,7 @@ namespace WsiApi.Data
 
             object result = cmd.ExecuteScalar();
             int insertId = (int)result;
+
             return insertId;
         }
     }
