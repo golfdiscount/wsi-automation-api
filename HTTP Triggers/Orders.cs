@@ -1,31 +1,31 @@
-using Azure.Storage.Blobs;
-using Azure.Storage.Queues;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.IO;
-using System.Text.Json;
 using System.Threading.Tasks;
-using System.Web.Http;
 using WsiApi.Data;
 using WsiApi.Models;
+using System;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
+using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
+using System.IO;
+using System.Web.Http;
 
-namespace WsiApi.HTTP_Triggers.POST
+namespace WsiApi.HTTP_Triggers
 {
-    public class PostOrder
+    public class Orders
     {
         private readonly string cs;
         private readonly JsonSerializerOptions jsonOptions;
         private readonly BlobServiceClient blobServiceClient;
         private readonly QueueServiceClient queueServiceClient;
 
-        public PostOrder(SqlConnectionStringBuilder builder,
+        public Orders(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
             QueueServiceClient queueServiceClient,
             BlobServiceClient blobServiceClient)
@@ -36,9 +36,101 @@ namespace WsiApi.HTTP_Triggers.POST
             this.blobServiceClient = blobServiceClient;
         }
 
-        [FunctionName("PostOrder")]
-        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = "orders")] HttpRequest req,
+        [FunctionName("Orders")]
+        public async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orders/{orderNumber?}")] HttpRequest req,
+            string? orderNumber,
             ILogger log)
+        {
+            if (req.Method == "POST")
+            {
+                return await Post(req, log);
+            }
+            if (orderNumber == null)
+            {
+                return Get();
+            }
+
+            return Get(orderNumber, log);
+        }
+
+        /// <summary>
+        /// Processes a GET request and returns the most recently inserted orders
+        /// </summary>
+        /// <returns>HTTP Status result</returns>
+        private IActionResult Get()
+        {
+            List<HeaderModel> headers = PtHeaders.GetHeader(cs);
+            List<OrderModel> orders = new();
+
+            headers.ForEach(header =>
+            {
+                OrderModel order = new()
+                {
+                    PickticketNumber = header.PickticketNumber,
+                    OrderNumber = header.OrderNumber,
+                    Action = header.Action,
+                    Store = Stores.GetStore(header.Store, cs)[0].StoreNumber,
+                    Customer = Addresses.GetAddress(header.Customer, cs),
+                    Recipient = Addresses.GetAddress(header.Recipient, cs),
+                    ShippingMethod = ShippingMethods.GetShippingMethods(header.ShippingMethod, cs).Code,
+                    Products = PtDetails.GetDetails(header.PickticketNumber, cs),
+                    OrderDate = header.OrderDate,
+                    Channel = header.Channel,
+                    CreatedAt = header.CreatedAt,
+                    UpdatedAt = header.UpdatedAt
+                };
+
+                orders.Add(order);
+            });
+
+
+            return new OkObjectResult(orders);
+        }
+
+        /// <summary>
+        /// Processes a GET request for a singular order
+        /// </summary>
+        /// <param name="orderNumber">Order number to search for in the database</param>
+        /// <param name="log">Logging object</param>
+        /// <returns></returns>
+        private IActionResult Get(string orderNumber, ILogger log)
+        {
+            log.LogInformation($"Searching database for order {orderNumber}");
+
+            HeaderModel header = PtHeaders.GetHeader(orderNumber, cs);
+
+            if (header == null)
+            {
+                return new NotFoundResult();
+            }
+
+            OrderModel order = new()
+            {
+                PickticketNumber = header.PickticketNumber,
+                OrderNumber = header.OrderNumber,
+                Action = header.Action,
+                Store = Stores.GetStore(header.Store, cs)[0].StoreNumber,
+                Customer = Addresses.GetAddress(header.Customer, cs),
+                Recipient = Addresses.GetAddress(header.Recipient, cs),
+                ShippingMethod = ShippingMethods.GetShippingMethods(header.ShippingMethod, cs).Code,
+                Products = PtDetails.GetDetails(header.PickticketNumber, cs),
+                OrderDate = header.OrderDate,
+                Channel = header.Channel,
+                CreatedAt = header.CreatedAt,
+                UpdatedAt = header.UpdatedAt
+            };
+
+            return new OkObjectResult(order);
+        }
+
+        /// <summary>
+        /// Processes a post request for this route
+        /// </summary>
+        /// <param name="req">HttpRequest containing POST data</param>
+        /// <param name="log">Logging object</param>
+        /// <returns>A result indicating HTTP status of POST request</returns>
+        private async Task<IActionResult> Post(HttpRequest req, ILogger log)
         {
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd().Trim();
@@ -69,8 +161,8 @@ namespace WsiApi.HTTP_Triggers.POST
                     log.LogWarning(e.Message);
                     return new BadRequestErrorMessageResult("Formatting error. Ensure that dates are in format YYYY-MM-DD.");
                 }
-                catch (SqlException e) 
-                { 
+                catch (SqlException e)
+                {
                     if (e.Number == 2627) // e.Number refers to the SQL error code
                     {
                         log.LogInformation("Order already exists");
@@ -128,12 +220,13 @@ namespace WsiApi.HTTP_Triggers.POST
                         };
                         order.ShippingMethod = fields[32];
                         order.Store = 1;
-                    } else if (recordType == "PTD")
+                    }
+                    else if (recordType == "PTD")
                     {
                         order.Products.Add(new()
                         {
                             Sku = fields[5],
-                            Quantity = int.Parse(fields[10])
+                            Units = int.Parse(fields[10])
                         });
                     }
                 }
@@ -154,7 +247,8 @@ namespace WsiApi.HTTP_Triggers.POST
                     await sftpContainer.UploadBlobAsync(fileName, csvContents);
 
                     log.LogInformation("Commiting transaction");
-                } catch (ValidationException e)
+                }
+                catch (ValidationException e)
                 {
                     log.LogWarning(e.ValidationResult.ErrorMessage);
                     return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
@@ -180,47 +274,17 @@ namespace WsiApi.HTTP_Triggers.POST
             return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
         }
 
-        private class OrderModel
-        {
-            [Required]
-            public string OrderNumber { get; set; }
-
-            [Required]
-            public int Store { get; set; }
-
-            [Required]
-            public AddressModel Customer { get; set; }
-
-            [Required]
-            public AddressModel Recipient { get; set; }
-
-            [Required]
-            public string ShippingMethod { get; set; }
-
-            [Required]
-            public DateTime OrderDate { get; set; }
-
-            [Required]
-            public List<LineItemModel> Products { get; set; }
-
-            public int Channel { get; set; }
-        }
-
-        private class LineItemModel
-        {
-            [Required]
-            public string Sku { get; set; }
-
-            [Required]
-            public int Quantity { get; set; }
-        }
-
+        /// <summary>
+        /// Inserts a singular order into the database
+        /// </summary>
+        /// <param name="order">Order to be inserted</param>
         private void InsertOrder(OrderModel order)
         {
             try
             {
                 ValidateOrder(order);
-            } catch (ValidationException)
+            }
+            catch (ValidationException)
             {
                 throw;
             }
@@ -233,12 +297,13 @@ namespace WsiApi.HTTP_Triggers.POST
                 if (order.Customer.Equals(order.Recipient))
                 {
                     recipientId = customerId;
-                } else
+                }
+                else
                 {
                     recipientId = Addresses.InsertAddress(order.Recipient, cs);
                 }
-                
-                
+
+
                 HeaderModel header = new()
                 {
                     PickticketNumber = "C" + order.OrderNumber,
@@ -264,8 +329,8 @@ namespace WsiApi.HTTP_Triggers.POST
                         Action = 'I',
                         LineNumber = productCount,
                         Sku = product.Sku,
-                        Units = product.Quantity,
-                        UnitsToShip = product.Quantity
+                        Units = product.Units,
+                        UnitsToShip = product.Units
                     };
                     PtDetails.InsertDetail(detail, cs);
                 });
@@ -276,6 +341,11 @@ namespace WsiApi.HTTP_Triggers.POST
             }
         }
 
+        /// <summary>
+        /// Validates an order to ensure that all data annotations are
+        /// met
+        /// </summary>
+        /// <param name="order">Order to be validated</param>
         private static void ValidateOrder(OrderModel order)
         {
             ValidationContext validationContext = new(order);
@@ -286,6 +356,33 @@ namespace WsiApi.HTTP_Triggers.POST
 
             validationContext = new(order.Recipient);
             Validator.ValidateObject(order.Recipient, validationContext, true);
+        }
+
+        private class OrderModel
+        {
+            public string PickticketNumber { get; set; }
+
+            public string OrderNumber { get; set; }
+
+            public char Action { get; set; }
+
+            public int Store { get; set; }
+
+            public AddressModel Customer { get; set; }
+
+            public AddressModel Recipient { get; set; }
+
+            public string ShippingMethod { get; set; }
+
+            public List<DetailModel> Products { get; set; }
+
+            public DateTime OrderDate { get; set; }
+
+            public int Channel { get; set; }
+
+            public DateTime CreatedAt { get; set; }
+
+            public DateTime UpdatedAt { get; set; }
         }
     }
 }

@@ -1,28 +1,28 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using WsiApi.Models;
 
 namespace WsiApi.Data
 {
     public static class PtHeaders
     {
-        private static readonly string Select = @"SELECT * FROM [pt_header]";
+        private static readonly string Select = @"SELECT * FROM [pt_header] WHERE [pt_header].[order_number] = @number;";
         private static readonly string Insert = @"INSERT INTO [pt_header] (pick_ticket_number, order_number, store, customer, recipient, shipping_method, order_date, channel)
             VALUES (@pick_ticket_number, @order_number, @store, @customer, @recipient, @shipping_method, @order_date, @channel);";
 
         public static List<HeaderModel> GetHeader(string connectionString)
         {
-            List<HeaderModel> orders = new();
-
+            List<HeaderModel> headers = new();
             using SqlConnection conn = new(connectionString);
             conn.Open();
 
-            const string cmdText = @"SELECT TOP 30 *
+            string cmdText = @"SELECT TOP 30 *
                 FROM [dbo].[pt_header]
                 ORDER BY [dbo].[pt_header].[created_at] DESC,
 	                [dbo].[pt_header].[order_date] DESC;";
-
             using SqlCommand cmd = new(cmdText, conn);
+
             using SqlDataReader reader = cmd.ExecuteReader();
 
             int pickticketNumberIdx = reader.GetOrdinal("pick_ticket_number");
@@ -54,10 +54,10 @@ namespace WsiApi.Data
                     UpdatedAt = reader.GetDateTime(updatedIdx)
                 };
 
-                orders.Add(header);
+                headers.Add(header);
             }
 
-            return orders;
+            return headers;
         }
 
         public static HeaderModel GetHeader(string orderNumber, string connectionString)
@@ -65,7 +65,7 @@ namespace WsiApi.Data
             using SqlConnection conn = new(connectionString);
             conn.Open();
 
-            using SqlCommand cmd = new(Select + $" WHERE [pt_header].[order_number] = @number;", conn);
+            using SqlCommand cmd = new(Select, conn);
             cmd.Parameters.AddWithValue("@number", orderNumber);
 
             using SqlDataReader reader = cmd.ExecuteReader();
