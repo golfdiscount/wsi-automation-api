@@ -158,7 +158,16 @@ namespace WsiApi.HTTP_Triggers.POST
                 {
                     log.LogWarning(e.ValidationResult.ErrorMessage);
                     return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
-                } catch (Exception e)
+                }
+                catch (SqlException e)
+                {
+                    if (e.Number == 2627) // e.Number refers to the SQL error code
+                    {
+                        log.LogInformation("Order already exists");
+                        return new BadRequestErrorMessageResult("Order already exists");
+                    }
+                }
+                catch (Exception e)
                 {
                     log.LogCritical(e.Message);
                     throw;
