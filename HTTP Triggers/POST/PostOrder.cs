@@ -219,8 +219,17 @@ namespace WsiApi.HTTP_Triggers.POST
             try
             {
                 int customerId = Addresses.InsertAddress(order.Customer, cs);
-                int recipientId = Addresses.InsertAddress(order.Recipient, cs);
+                int recipientId;
 
+                if (order.Customer.Equals(order.Recipient))
+                {
+                    recipientId = customerId;
+                } else
+                {
+                    recipientId = Addresses.InsertAddress(order.Recipient, cs);
+                }
+                
+                
                 HeaderModel header = new()
                 {
                     PickticketNumber = "C" + order.OrderNumber,
