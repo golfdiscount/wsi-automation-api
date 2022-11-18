@@ -9,19 +9,18 @@ using System.Collections.Generic;
 using WsiApi.Data;
 using WsiApi.Models;
 
-
-namespace WsiApi.HTTP_Triggers.GET
+namespace WsiApi.HTTP_Triggers
 {
-    public class GetPo
+    public class Pos
     {
         private readonly string cs;
 
-        public GetPo(SqlConnectionStringBuilder builder)
+        public Pos(SqlConnectionStringBuilder builder)
         {
             cs = builder.ConnectionString;
         }
 
-        [FunctionName("GetPo")]
+        [FunctionName("Pos")]
         public IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "pos/{poNumber}")] HttpRequest req,
             string poNumber,

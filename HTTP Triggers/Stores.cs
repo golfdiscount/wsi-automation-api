@@ -1,35 +1,46 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using System.Collections.Generic;
+using WsiApi.Models;
 
 namespace WsiApi.HTTP_Triggers
 {
-    public static class Stores
+    public class Stores
     {
+        private readonly string cs;
+
+        public Stores(SqlConnectionStringBuilder builder)
+        {
+            cs = builder.ConnectionString;
+        }
+
         [FunctionName("Stores")]
-        public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+        public IActionResult Run(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = "stores/{id:int?}")] HttpRequest req,
+            int? id,
             ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            List<StoreModel> stores;
 
-            string name = req.Query["name"];
+            if (id == null)
+            {
+                stores = Data.Stores.GetStore(cs);
+            }
+            else
+            {
+                stores = Data.Stores.GetStore((int)id, cs);
+            }
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            if (stores.Count == 0)
+            {
+                return new NotFoundObjectResult(stores);
+            }
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
+            return new OkObjectResult(stores);
         }
     }
 }

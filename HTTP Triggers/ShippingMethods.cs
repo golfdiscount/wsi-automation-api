@@ -5,20 +5,19 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using WsiApi.Data;
 using WsiApi.Models;
 
 namespace WsiApi.HTTP_Triggers
 {
-    public class GetShippingMethod
+    public class ShippingMethods
     {
         private readonly string cs;
-        public GetShippingMethod(SqlConnectionStringBuilder builder)
+        public ShippingMethods(SqlConnectionStringBuilder builder)
         {
             cs = builder.ConnectionString;
         }
 
-        [FunctionName("GetShippingMethod")]
+        [FunctionName("ShippingMethods")]
         public IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "shipping/{code:alpha?}")] HttpRequest req,
             string? code,
@@ -26,7 +25,7 @@ namespace WsiApi.HTTP_Triggers
         {
             if (code != null)
             {
-                ShippingMethodModel method = ShippingMethods.GetShippingMethods(code, cs);
+                ShippingMethodModel method = Data.ShippingMethods.GetShippingMethods(code, cs);
 
                 if (method == null)
                 {
@@ -36,7 +35,7 @@ namespace WsiApi.HTTP_Triggers
                 return new OkObjectResult(method);
             }
 
-            List<ShippingMethodModel> methods = ShippingMethods.GetShippingMethods(cs);
+            List<ShippingMethodModel> methods = Data.ShippingMethods.GetShippingMethods(cs);
             return new OkObjectResult(methods);
         }
     }
