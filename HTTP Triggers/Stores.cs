@@ -5,21 +5,20 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using WsiApi.Data;
 using WsiApi.Models;
 
-namespace WsiApi
+namespace WsiApi.HTTP_Triggers
 {
-    public class GetStore
+    public class Stores
     {
         private readonly string cs;
 
-        public GetStore(SqlConnectionStringBuilder builder)
+        public Stores(SqlConnectionStringBuilder builder)
         {
             cs = builder.ConnectionString;
         }
 
-        [FunctionName("GetStore")]
+        [FunctionName("Stores")]
         public IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "stores/{id:int?}")] HttpRequest req,
             int? id,
@@ -29,10 +28,11 @@ namespace WsiApi
 
             if (id == null)
             {
-                stores = Stores.GetStore(cs);
-            } else
+                stores = Data.Stores.GetStore(cs);
+            }
+            else
             {
-                stores = Stores.GetStore((int)id, cs);
+                stores = Data.Stores.GetStore((int)id, cs);
             }
 
             if (stores.Count == 0)
