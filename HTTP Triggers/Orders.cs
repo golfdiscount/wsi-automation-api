@@ -1,20 +1,21 @@
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using WsiApi.Data;
-using WsiApi.Models;
 using System;
-using Azure.Storage.Blobs;
-using Azure.Storage.Queues;
-using System.Text.Json;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Web.Http;
+using WsiApi.Data;
+using WsiApi.Models;
+using System.Text;
 
 namespace WsiApi.HTTP_Triggers
 {
@@ -23,17 +24,17 @@ namespace WsiApi.HTTP_Triggers
         private readonly string cs;
         private readonly JsonSerializerOptions jsonOptions;
         private readonly BlobServiceClient blobServiceClient;
-        private readonly QueueServiceClient queueServiceClient;
+        private readonly HttpClient magento;
 
         public Orders(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
-            QueueServiceClient queueServiceClient,
-            BlobServiceClient blobServiceClient)
+            BlobServiceClient blobServiceClient,
+            IHttpClientFactory httpClientFactory)
         {
             cs = builder.ConnectionString;
             this.jsonOptions = jsonOptions;
-            this.queueServiceClient = queueServiceClient;
             this.blobServiceClient = blobServiceClient;
+            magento = httpClientFactory.CreateClient("magento");
         }
 
         [FunctionName("Orders")]
@@ -144,11 +145,16 @@ namespace WsiApi.HTTP_Triggers
                     log.LogInformation($"Inserting {order.OrderNumber} into the database");
                     InsertOrder(order);
 
-                    QueueClient orderCsvCreationQueue = queueServiceClient.GetQueueClient("order-csv-creation");
-                    log.LogInformation($"Queuing {order.OrderNumber} for CSV creation");
-                    await orderCsvCreationQueue.SendMessageAsync(order.OrderNumber);
+                    string orderCsv = GenerateOrderHeader(order);
+                    orderCsv += GenerateOrderDetail(order);
 
-                    log.LogInformation("Commiting transaction");
+                    BinaryData csvContents = new(orderCsv);
+                    string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
+                    BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
+
+                    log.LogInformation($"Uploading blob {fileName} to sftp container");
+                    await sftpContainer.UploadBlobAsync(fileName, csvContents);
+
                     return new CreatedResult("", order);
                 }
                 catch (ValidationException e)
@@ -178,58 +184,7 @@ namespace WsiApi.HTTP_Triggers
             }
             else if (req.ContentType == "text/csv")
             {
-                Dictionary<string, OrderModel> orders = new();
-                string[] records = requestContents.Split("\n");
-
-                foreach (string record in records)
-                {
-                    string[] fields = record.Split(',');
-                    string recordType = fields[0];
-                    string pickticketNum = fields[2];
-
-                    if (!orders.ContainsKey(pickticketNum))
-                    {
-                        orders.Add(pickticketNum, new());
-                        orders[pickticketNum].Products = new();
-                        orders[pickticketNum].Channel = 1;
-                    }
-
-                    OrderModel order = orders[pickticketNum];
-
-                    if (recordType == "PTH")
-                    {
-                        order.OrderNumber = fields[3];
-                        order.OrderDate = DateTime.ParseExact(fields[5], "MM/dd/yyyy", null);
-                        order.Customer = new()
-                        {
-                            Name = fields[12].Replace("\"", ""),
-                            Street = fields[13].Replace("\"", ""),
-                            City = fields[14].Replace("\"", ""),
-                            State = fields[15],
-                            Country = fields[16],
-                            Zip = fields[17]
-                        };
-                        order.Recipient = new()
-                        {
-                            Name = fields[19].Replace("\"", ""),
-                            Street = fields[20].Replace("\"", ""),
-                            City = fields[21].Replace("\"", ""),
-                            State = fields[22],
-                            Country = fields[23],
-                            Zip = fields[24]
-                        };
-                        order.ShippingMethod = fields[32];
-                        order.Store = 1;
-                    }
-                    else if (recordType == "PTD")
-                    {
-                        order.Products.Add(new()
-                        {
-                            Sku = fields[5],
-                            Units = int.Parse(fields[10])
-                        });
-                    }
-                }
+                Dictionary<string, OrderModel> orders = ParseCsv(requestContents);
 
                 try
                 {
@@ -358,6 +313,69 @@ namespace WsiApi.HTTP_Triggers
             Validator.ValidateObject(order.Recipient, validationContext, true);
         }
 
+        /// <summary>
+        /// Parses a CSV containg pickticket headers and details
+        /// </summary>
+        /// <param name="csv">CSV to parse</param>
+        /// <returns>A key value of pair of order number to an OrderModel</returns>
+        private static Dictionary<string, OrderModel> ParseCsv(string csv)
+        {
+            Dictionary<string, OrderModel> orders = new();
+            string[] records = csv.Split("\n");
+
+            foreach (string record in records)
+            {
+                string[] fields = record.Split(',');
+                string recordType = fields[0];
+                string pickticketNum = fields[2];
+
+                if (!orders.ContainsKey(pickticketNum))
+                {
+                    orders.Add(pickticketNum, new());
+                    orders[pickticketNum].Products = new();
+                    orders[pickticketNum].Channel = 1;
+                }
+
+                OrderModel order = orders[pickticketNum];
+
+                if (recordType == "PTH")
+                {
+                    order.OrderNumber = fields[3];
+                    order.OrderDate = DateTime.ParseExact(fields[5], "MM/dd/yyyy", null);
+                    order.Customer = new()
+                    {
+                        Name = fields[12].Replace("\"", ""),
+                        Street = fields[13].Replace("\"", ""),
+                        City = fields[14].Replace("\"", ""),
+                        State = fields[15],
+                        Country = fields[16],
+                        Zip = fields[17]
+                    };
+                    order.Recipient = new()
+                    {
+                        Name = fields[19].Replace("\"", ""),
+                        Street = fields[20].Replace("\"", ""),
+                        City = fields[21].Replace("\"", ""),
+                        State = fields[22],
+                        Country = fields[23],
+                        Zip = fields[24]
+                    };
+                    order.ShippingMethod = fields[32];
+                    order.Store = 1;
+                }
+                else if (recordType == "PTD")
+                {
+                    order.Products.Add(new()
+                    {
+                        Sku = fields[5],
+                        Units = int.Parse(fields[10])
+                    });
+                }
+            }
+
+            return orders;
+        }
+
         private class OrderModel
         {
             public string PickticketNumber { get; set; }
@@ -383,6 +401,64 @@ namespace WsiApi.HTTP_Triggers
             public DateTime CreatedAt { get; set; }
 
             public DateTime UpdatedAt { get; set; }
+        }
+
+        private static string GenerateOrderHeader(OrderModel order)
+        {
+            StringBuilder headerCsv = new();
+            headerCsv.Append($"PTH,{order.Action},{order.PickticketNumber},{order.OrderNumber},C,");
+            headerCsv.Append($"{order.OrderDate.ToString("MM/dd/yyyy")},");
+            headerCsv.Append(new string(',', 3));
+            headerCsv.Append("75,");
+            headerCsv.Append(new string(',', 2));
+
+            headerCsv.Append($"\"{order.Customer.Name}\",");
+            headerCsv.Append($"\"{order.Customer.Street}\",");
+            headerCsv.Append($"\"{order.Customer.City}\",");
+            headerCsv.Append($"{order.Customer.State},");
+            headerCsv.Append($"{order.Customer.Country},");
+            headerCsv.Append($"{order.Customer.Zip},,");
+
+            headerCsv.Append($"\"{order.Recipient.Name}\",");
+            headerCsv.Append($"\"{order.Recipient.Street}\",");
+            headerCsv.Append($"\"{order.Recipient.City}\",");
+            headerCsv.Append($"{order.Recipient.State},");
+            headerCsv.Append($"{order.Recipient.Country},");
+            headerCsv.Append($"{order.Recipient.Zip}{new string(',', 8)}");
+
+            headerCsv.Append(order.ShippingMethod + new string(',', 3));
+            headerCsv.Append("PGD,,HN,PGD,PP");
+            headerCsv.Append(new string(',', 6));
+            headerCsv.Append('Y' + new string(',', 4));
+            headerCsv.Append("PT" + new string(',', 12));
+
+            return headerCsv.ToString();
+        }
+
+        private async Task<string> GenerateOrderDetail(OrderModel order)
+        {
+            StringBuilder detailCsv = new();
+
+            order.Products.ForEach(async lineItem =>
+            {
+                detailCsv.Append("PTD,I,");
+                detailCsv.Append($"{order.PickticketNumber},");
+                detailCsv.Append($"{lineItem.LineNumber},A,");
+                detailCsv.Append($"{lineItem.Sku}{new string(',', 5)}");
+                detailCsv.Append($"{lineItem.Units},{lineItem.Units}{new string(',', 3)}");
+
+                HttpResponseMessage response = await magento.GetAsync($"/api/products/{lineItem.Sku}");
+                response.EnsureSuccessStatusCode();
+                HttpContent content = response.Content;
+
+                MagentoProduct product = JsonSerializer.Deserialize<MagentoProduct>(await content.ReadAsStringAsync(), jsonOptions);
+
+                detailCsv.Append($"{product.Price}{new string(',', 3)}");
+                detailCsv.Append($"HN,PGD{new string(',', 8)}");
+                detailCsv.Append('\n');
+            });
+
+            return detailCsv.ToString();
         }
     }
 }
