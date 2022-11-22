@@ -186,7 +186,7 @@ Triggers on the HTTP path `/api/pos/{poNumber}` and returns a JSON object repres
 | 404 | An PO was not found for the provided order number |
 
 ### Shipping Methods
-Triggers on the HTTP path `shipping/{code:alpha?}` and returns a JSON object representing
+Triggers on the HTTP path `/api/shipping/{code:alpha?}` and returns a JSON object representing
 shipping method information. If `code` is not specified, returns a listing of all shipping
 methods.
 
@@ -207,7 +207,7 @@ methods.
 | 404 | A shipping method was not found for the provided shipping code |
 
 ### Stores
-Triggers on the HTTP path `stores/{id:int?}` and returns a JSON object representing
+Triggers on the HTTP path `/api/stores/{id:int?}` and returns a JSON object representing
 store information. if `id` is not specified, returns a listing of all stores.
 
 #### Response Body
