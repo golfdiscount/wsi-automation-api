@@ -394,7 +394,7 @@ namespace WsiApi.HTTP_Triggers
         private static string GenerateOrderHeader(OrderModel order)
         {
             StringBuilder headerCsv = new();
-            headerCsv.Append($"PTH,{order.Action},{order.PickTicketNumber},{order.OrderNumber},C,");
+            headerCsv.Append($"PTH,I,{order.PickTicketNumber},{order.OrderNumber},C,");
             headerCsv.Append($"{order.OrderDate.ToString("MM/dd/yyyy")},");
             headerCsv.Append(new string(',', 3));
             headerCsv.Append("75,");
@@ -419,11 +419,12 @@ namespace WsiApi.HTTP_Triggers
             headerCsv.Append(new string(',', 6));
             headerCsv.Append('Y' + new string(',', 4));
             headerCsv.Append("PT" + new string(',', 12));
+            headerCsv.Append('\n');
 
             return headerCsv.ToString();
         }
 
-        private async Task<string> GenerateOrderDetail(OrderModel order)
+        private string GenerateOrderDetail(OrderModel order)
         {
             StringBuilder detailCsv = new();
 
