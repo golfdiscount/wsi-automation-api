@@ -4,11 +4,11 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
-using Renci.SshNet;
 using SendGrid.Extensions.DependencyInjection;
 using System;
 using System.Text;
 using System.Text.Json;
+using WsiApi.Services;
 
 [assembly: FunctionsStartup(typeof(WsiApi.Startup))]
 
@@ -43,11 +43,11 @@ namespace WsiApi
             KeyVaultSecret wsiHost = secretClient.GetSecret("wsi-uri");
             KeyVaultSecret wsiUser = secretClient.GetSecret("wsi-user");
             KeyVaultSecret wsiPass = secretClient.GetSecret("wsi-pass");
-            SftpClient sftp = new(wsiHost.Value, wsiUser.Value, wsiPass.Value);
+            SftpService wsiSftp = new(wsiHost.Value, wsiUser.Value, wsiPass.Value);
 
             builder.Services.AddSingleton(jsonOptions);
             builder.Services.AddSingleton(connectionBuilder);
-            builder.Services.AddSingleton(sftp);
+            builder.Services.AddSingleton(wsiSftp);
 
             builder.Services.AddHttpClient("magento", config =>
             {
@@ -57,12 +57,14 @@ namespace WsiApi
                 config.BaseAddress = new(magentoUri.Value);
                 config.DefaultRequestHeaders.Add("x-functions-key", magentoKey.Value);
             });
+
             builder.Services.AddHttpClient("dufferscorner", config =>
             {
                 KeyVaultSecret duffersUri = secretClient.GetSecret("dufferscorner-uri");
 
                 config.BaseAddress = new(duffersUri.Value);
             });
+
             builder.Services.AddHttpClient("shipstation", config =>
             {
                 KeyVaultSecret shipstationUri = secretClient.GetSecret("shipstation-uri");
