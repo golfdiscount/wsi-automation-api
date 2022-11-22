@@ -33,7 +33,7 @@ The key points are as follows:
 **The following KeyVault secrets are required. Whoever is developing/debugging the application
 must at a minimum have `GET` permissions for KeyVault secrets.**
 
-- db-host: URI to a SQL Server database containing WSI information
+- db-host: URI to a SQL Server database containing database tables to store WSI information
 - dufferscorner-uri: URI to root of dufferscorner website
 - magento-key: API function key to Magento API
 - magento-uri: URI for magento API
@@ -55,64 +55,64 @@ Triggers on the blob storage path `sftp/{name}` and initiates SFTP for the blob 
 
 ## HTTP Triggers
 
-### GET
+### Orders
 
-#### GetOrder
-Triggers on the HTTP path `orders/{orderNumber}` and returns a JSON object representing a WSI order.
+#### Getting an order
+You can get a singular order or a list of recent orders at the path `/api/orders/{orderNumber?}`.
 
 ##### Response Body
 ```json
 {
-  "pickticketNumber": "Unique pickticket number",
-  "orderNumber": "Original order number from Magento",
-  "action": "Order action (typically I for insert)",
-  "store": {
-      "name": "Pro Golf Internet",
-      "street": "13405 SE 30th St Suite 1A",
-      "city": "Bellevue",
-      "state": "WA",
-      "country": "US",
-      "zip": "98005",
-      "storeNumber": 1
-  },
-"customer": {
-      "name": "Customer name",
-      "street": "Customer street address",
-      "city": "Customer city",
-      "state": "Customer state",
-      "country": "Customer country",
-      "zip": "Customer zip code"
-  },
-  "recipient": {
-      "name": "Recipient name",
-      "street": "Recipient street address",
-      "city": "Recipient city",
-      "state": "Recipient state",
-      "country": "Recipient country",
-      "zip": "Recipient zip code"
-  },
-  "shippingMethod": {
-      "code": "FDXH",
-      "description": "FedEx Home Delivery",
-      "created_at": "2022-08-04T23:47:04.59",
-      "updated_at": "2022-08-04T23:47:04.59"
-  },
-  "lineItems": [
-      {
-          "pickticketNumber": "Unique pickticket number",
-          "lineNumber": "Line number",
-          "action": "Line action (typically I for insert)",
-          "sku": "Product SKU",
-          "units": "Quantity ordered",
-          "unitsToShip": "Quantity authorized to ship",
-          "created_at": "Date created",
-          "updated_at": "Date last updated"
-      }
-  ],
-  "orderDate": "Order date",
-  "channel": "Channel number",
-  "createdAt": "Date created",
-  "updatedAt": "Date updated"
+    "pickTicketNumber": "Unique pickticket number",
+    "orderNumber": "Original order number from Magento",
+    "action": "Order action (typically I for insert)",
+    "store": {
+        "name": "Pro Golf Internet",
+        "street": "13405 SE 30th St Suite 1A",
+        "city": "Bellevue",
+        "state": "WA",
+        "country": "US",
+        "zip": "98005",
+        "storeNumber": 1
+    },
+    "customer": {
+        "name": "Customer name",
+        "street": "Customer street address",
+        "city": "Customer city",
+        "state": "Customer state",
+        "country": "Customer country",
+        "zip": "Customer zip code"
+    },
+    "recipient": {
+        "name": "Recipient name",
+        "street": "Recipient street address",
+        "city": "Recipient city",
+        "state": "Recipient state",
+        "country": "Recipient country",
+        "zip": "Recipient zip code"
+    },
+    "shippingMethod": {
+        "code": "FDXH",
+        "description": "FedEx Home Delivery",
+        "created_at": "2022-08-04T23:47:04.59",
+        "updated_at": "2022-08-04T23:47:04.59"
+    },
+    "lineItems": [
+        {
+            "pickticketNumber": "Unique pickticket number",
+            "lineNumber": "Line number",
+            "action": "Line action (typically I for insert)",
+            "sku": "Product SKU",
+            "units": "Quantity ordered",
+            "unitsToShip": "Quantity authorized to ship",
+            "created_at": "Date created",
+            "updated_at": "Date last updated"
+        }
+    ],
+    "orderDate": "Order date",
+    "channel": "Channel number",
+    "createdAt": "Date created",
+    "updatedAt": "Date updated"
 }
 ```
 
@@ -122,110 +122,9 @@ Triggers on the HTTP path `orders/{orderNumber}` and returns a JSON object repre
 | 200 | An order was found and returned |
 | 404 | An order was not found for the provided order number |
 
-#### GetPo
-Triggers on the HTTP path `pos/{poNumber}` and returns a JSON object representing PO information.
-
-##### Expected Return Codes
-| Code | Description |
-| ---- | ----------- |
-| 200 | An PO was found and returned |
-| 404 | An PO was not found for the provided order number |
-
-#### GetShippingMethod
-Triggers on the HTTP path `shipping/{code:alpha?}` and returns a JSON object representing
-shipping method information. If `code` is not specified, returns a listing of all shipping
-methods.
-
-##### Response Body
-```json
-{
-    "code": "FDXH",
-    "description": "FedEx Home Delivery",
-    "created_at": "2022-08-04T23:47:04.59",
-    "updated_at": "2022-08-04T23:47:04.59"
-}
-```
-
-or
-
-```json
-[
-  {
-    "code": "FDXH",
-    "description": "FedEx Home Delivery",
-    "created_at": "2022-08-04T23:47:04.59",
-    "updated_at": "2022-08-04T23:47:04.59"
-  },
-  {
-      "code": "FDSO",
-      "description": "FedEx Standard Overnight",
-      "created_at": "2022-08-04T23:47:04.59",
-      "updated_at": "2022-08-04T23:47:04.59"
-  }
-]
-```
-
-##### Expected Return Codes
-| Code | Description |
-| ---- | ----------- |
-| 200 | A shipping method was found and returned |
-| 404 | A shipping method was not found for the provided shipping code |
-
-#### GetStore
-Triggers on the HTTP path `stores/{id:int?}` and returns a JSON object representing
-store information. if `id` is not specified, returns a listing of all stores.
-
-##### Response Body
-```json
-[
-    {
-        "name": "Pro Golf Internet",
-        "street": "13405 SE 30th St Suite 1A",
-        "city": "Bellevue",
-        "state": "WA",
-        "country": "US",
-        "zip": "98005",
-        "storeNumber": 1
-    }
-]
-```
-
-or
-
-```json
-[
-  {
-      "name": "Pro Golf Internet",
-      "street": "13405 SE 30th St Suite 1A",
-      "city": "Bellevue",
-      "state": "WA",
-      "country": "US",
-      "zip": "98005",
-      "storeNumber": 1
-  },
-  {
-      "name": "Pro Golf Lynnwood",
-      "street": "19125 33rd Ave W A",
-      "city": "Lynnwood",
-      "state": "WA",
-      "country": "US",
-      "zip": "98036",
-      "storeNumber": 2
-  }
-]
-```
-
-##### Expected Return Codes
-| Code | Description |
-| ---- | ----------- |
-| 200 | A store was found and returned |
-| 404 | A store was not found for the provided store id |
-
-### POST
-
-#### PostOrder
-Triggers on the path `orders` and creates a new WSI order in the database and queues it for
-CSV creation at the function `OrderCsvCreation`.
+#### Creating an order
+Triggers on the path `/api/orders` and creates a new WSI order in the database, generates a CSV
+file for it, and sends it to WSI.
 
 ##### Content-Types
 This route accepts two content types:
@@ -241,32 +140,33 @@ typically done when taking orders created by Magento and uploading them to this 
 ##### Request Body
 ```json
 {
-  "orderNumber": "Order number from Magento",
-  "store": 1,
-  "customer": {
-      "name": "Customer name",
-      "street": "Customer street address",
-      "city": "Customer city",
-      "state": "Customer state",
-      "country": "Customer country",
-      "zip": "Customer zip code"
-  },
-  "recipient": {
-      "name": "Recipient name",
-      "street": "Recipient street address",
-      "city": "Recipient city",
-      "state": "Recipient state",
-      "country": "Recipient country",
-      "zip": "Recipient zip code"
-  },
-  "shippingMethod": "FDXH",
-  "orderDate": "Date of order",
-  "products": [
-      {
-          "sku": "Product SKU",
-          "quantity": "Quantity ordered"
-      }
-  ]
+    "orderNumber": "Order number from Magento",
+    "orderDate": "Date of order in YYYY-MM-DD format",
+    "store": 1,
+    "shippingMethod": "FDXH",
+    "customer": {
+        "name": "Customer name",
+        "street": "Customer street address",
+        "city": "Customer city",
+        "state": "Customer state",
+        "country": "Customer country",
+        "zip": "Customer zip code"
+    },
+    "recipient": {
+        "name": "Recipient name",
+        "street": "Recipient street address",
+        "city": "Recipient city",
+        "state": "Recipient state",
+        "country": "Recipient country",
+        "zip": "Recipient zip code"
+    },
+    "lineItems": [
+        {
+            "sku": "Product SKU",
+            "units": "Quantity ordered",
+            "lineNumber": 1
+        }
+    ]
 }
 ```
 
@@ -274,14 +174,64 @@ typically done when taking orders created by Magento and uploading them to this 
 | Code | Description |
 | ---- | ----------- |
 | 202 | The order was successfully created |
-| 400 | A bad request was submitted. This could either happen because of: JSOB body formatting errors, a set of required attributes was not given, or a missing Content-Type header. |
+| 400 | A bad request was submitted. This could either happen because of: JSON body formatting errors, a set of required attributes was not given, or a missing Content-Type header. |
+
+### Purchase Orders
+Triggers on the HTTP path `/api/pos/{poNumber}` and returns a JSON object representing PO information.
+
+#### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | An PO was found and returned |
+| 404 | An PO was not found for the provided order number |
+
+### Shipping Methods
+Triggers on the HTTP path `shipping/{code:alpha?}` and returns a JSON object representing
+shipping method information. If `code` is not specified, returns a listing of all shipping
+methods.
+
+#### Response Body
+```json
+{
+    "code": "FDXH",
+    "description": "FedEx Home Delivery",
+    "created_at": "2022-08-04T23:47:04.59",
+    "updated_at": "2022-08-04T23:47:04.59"
+}
+```
+
+#### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | A shipping method was found and returned |
+| 404 | A shipping method was not found for the provided shipping code |
+
+### Stores
+Triggers on the HTTP path `stores/{id:int?}` and returns a JSON object representing
+store information. if `id` is not specified, returns a listing of all stores.
+
+#### Response Body
+```json
+[
+    {
+        "name": "Pro Golf Internet",
+        "street": "13405 SE 30th St Suite 1A",
+        "city": "Bellevue",
+        "state": "WA",
+        "country": "US",
+        "zip": "98005",
+        "storeNumber": 1
+    }
+]
+```
+
+#### Expected Return Codes
+| Code | Description |
+| ---- | ----------- |
+| 200 | A store was found and returned |
+| 404 | A store was not found for the provided store id |
 
 ## Queue Triggers
-
-### OrderCsvCreation
-Triggers for messages in the queue `order-csv-creation`. The messages should be an order number
-to generate a CSV for. Once the CSV is generated, it will be queued for SFTP via the function
-`SftpBlob`.
 
 ### SendEmail
 Triggers for messages in the queue `send-email`. The messages should be in the format specified
