@@ -23,7 +23,10 @@ namespace WsiApi.Blob_Triggers
         public async Task Run([BlobTrigger("sftp/{name}", Connection = "AzureWebJobsStorage")]Stream blob, string name, ILogger log)
         {
             log.LogInformation($"Initializing SFTP for {name}");
-            sftp.Connect();
+
+            if (!sftp.IsConnected) {
+                sftp.Connect();
+            }
 
             try
             {
