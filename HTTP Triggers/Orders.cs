@@ -68,14 +68,14 @@ namespace WsiApi.HTTP_Triggers
             {
                 OrderModel order = new()
                 {
-                    PickticketNumber = header.PickticketNumber,
+                    PickTicketNumber = header.PickticketNumber,
                     OrderNumber = header.OrderNumber,
                     Action = header.Action,
                     Store = Data.Stores.GetStore(header.Store, cs)[0].StoreNumber,
                     Customer = Addresses.GetAddress(header.Customer, cs),
                     Recipient = Addresses.GetAddress(header.Recipient, cs),
                     ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, cs).Code,
-                    Products = PtDetails.GetDetails(header.PickticketNumber, cs),
+                    LineItems = PtDetails.GetDetails(header.PickticketNumber, cs),
                     OrderDate = header.OrderDate,
                     Channel = header.Channel,
                     CreatedAt = header.CreatedAt,
@@ -108,14 +108,14 @@ namespace WsiApi.HTTP_Triggers
 
             OrderModel order = new()
             {
-                PickticketNumber = header.PickticketNumber,
+                PickTicketNumber = header.PickticketNumber,
                 OrderNumber = header.OrderNumber,
                 Action = header.Action,
                 Store = Data.Stores.GetStore(header.Store, cs)[0].StoreNumber,
                 Customer = Addresses.GetAddress(header.Customer, cs),
                 Recipient = Addresses.GetAddress(header.Recipient, cs),
                 ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, cs).Code,
-                Products = PtDetails.GetDetails(header.PickticketNumber, cs),
+                LineItems = PtDetails.GetDetails(header.PickticketNumber, cs),
                 OrderDate = header.OrderDate,
                 Channel = header.Channel,
                 CreatedAt = header.CreatedAt,
@@ -136,97 +136,77 @@ namespace WsiApi.HTTP_Triggers
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd().Trim();
 
-            if (req.ContentType == "application/json")
+            try
             {
-                try
+                string csv;
+
+                if (req.ContentType == "application/json")
                 {
                     OrderModel order = JsonSerializer.Deserialize<OrderModel>(requestContents, jsonOptions);
                     order.Channel = 2; // TODO: Remove channel hardcoding
-                    log.LogInformation($"Inserting {order.OrderNumber} into the database");
-                    InsertOrder(order);
+                    PostJson(order, log);
 
-                    string orderCsv = GenerateOrderHeader(order);
-                    orderCsv += GenerateOrderDetail(order);
+                    csv = GenerateOrderHeader(order);
+                    csv += GenerateOrderDetail(order);
+                }
+                else if (req.ContentType == "text/csv")
+                {
+                    PostCsv(requestContents, log);
+                    csv = requestContents;
+                }
+                else
+                {
+                    log.LogWarning("Incoming request did not have Content-Type header of application/json or text/csv");
+                    return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
+                }
 
-                    BinaryData csvContents = new(orderCsv);
-                    string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
-                    BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
+                BinaryData csvContents = new(csv);
+                string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
+                BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
 
-                    log.LogInformation($"Uploading blob {fileName} to sftp container");
-                    await sftpContainer.UploadBlobAsync(fileName, csvContents);
-
-                    return new CreatedResult("", order);
-                }
-                catch (ValidationException e)
-                {
-                    log.LogWarning(e.ValidationResult.ErrorMessage);
-                    return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
-                }
-                catch (FormatException e)
-                {
-                    log.LogWarning(e.Message);
-                    return new BadRequestErrorMessageResult("Formatting error. Ensure that dates are in format YYYY-MM-DD.");
-                }
-                catch (SqlException e)
-                {
-                    if (e.Number == 2627) // e.Number refers to the SQL error code
-                    {
-                        log.LogInformation("Order already exists");
-                        return new BadRequestErrorMessageResult("Order already exists");
-                    }
-                }
-                catch (Exception e)
-                {
-                    log.LogWarning("Rolling back transaction");
-                    log.LogCritical(e.Message);
-                    throw;
-                }
-            }
-            else if (req.ContentType == "text/csv")
-            {
-                Dictionary<string, OrderModel> orders = ParseCsv(requestContents);
-
-                try
-                {
-                    foreach (var order in orders)
-                    {
-                        log.LogInformation($"Inserting {order.Value.OrderNumber} into the database");
-                        InsertOrder(order.Value);
-                    }
-
-                    BinaryData csvContents = new(requestContents);
-                    string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
-                    BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
-
-                    log.LogInformation($"Uploading blob {fileName} to sftp container");
-                    await sftpContainer.UploadBlobAsync(fileName, csvContents);
-
-                    log.LogInformation("Commiting transaction");
-                }
-                catch (ValidationException e)
-                {
-                    log.LogWarning(e.ValidationResult.ErrorMessage);
-                    return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
-                }
-                catch (SqlException e)
-                {
-                    if (e.Number == 2627) // e.Number refers to the SQL error code
-                    {
-                        log.LogInformation("Order already exists");
-                        return new BadRequestErrorMessageResult("Order already exists");
-                    }
-                }
-                catch (Exception e)
-                {
-                    log.LogCritical(e.Message);
-                    throw;
-                }
+                log.LogInformation($"Uploading blob {fileName} to sftp container");
+                await sftpContainer.UploadBlobAsync(fileName, csvContents);
 
                 return new StatusCodeResult(201);
             }
+            catch (ValidationException e)
+            {
+                log.LogWarning(e.ValidationResult.ErrorMessage);
+                return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
+            }
+            catch (FormatException e)
+            {
+                log.LogWarning(e.Message);
+                return new BadRequestErrorMessageResult("Formatting error. Ensure that dates are in format YYYY-MM-DD.");
+            }
+            catch (SqlException e)
+            {
+                if (e.Number == 2627) // e.Number refers to the SQL error code
+                {
+                    log.LogInformation("Order already exists");
+                    return new BadRequestErrorMessageResult("Order already exists");
+                }
 
-            log.LogWarning("Incoming request did not have Content-Type header of application/json or text/csv");
-            return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
+                log.LogError(e.Message);
+                return new InternalServerErrorResult();
+            }
+        }
+
+        private void PostJson(OrderModel order, ILogger log)
+        {
+            log.LogInformation($"Inserting {order.OrderNumber} into the database");
+            InsertOrder(order);
+        }
+
+        private void PostCsv(string csv, ILogger log)
+        {
+            Dictionary<string, OrderModel> orders = ParseCsv(csv);
+
+            foreach (var order in orders)
+            {
+                log.LogInformation($"Inserting {order.Value.OrderNumber} into the database");
+                InsertOrder(order.Value);
+            }
         }
 
         /// <summary>
@@ -275,7 +255,7 @@ namespace WsiApi.HTTP_Triggers
                 PtHeaders.InsertHeader(header, cs);
 
                 int productCount = 0;
-                order.Products.ForEach(product =>
+                order.LineItems.ForEach(product =>
                 {
                     productCount++;
                     DetailModel detail = new()
@@ -332,7 +312,7 @@ namespace WsiApi.HTTP_Triggers
                 if (!orders.ContainsKey(pickticketNum))
                 {
                     orders.Add(pickticketNum, new());
-                    orders[pickticketNum].Products = new();
+                    orders[pickticketNum].LineItems = new();
                     orders[pickticketNum].Channel = 1;
                 }
 
@@ -365,7 +345,7 @@ namespace WsiApi.HTTP_Triggers
                 }
                 else if (recordType == "PTD")
                 {
-                    order.Products.Add(new()
+                    order.LineItems.Add(new()
                     {
                         Sku = fields[5],
                         Units = int.Parse(fields[10])
@@ -377,23 +357,31 @@ namespace WsiApi.HTTP_Triggers
         }
 
         private class OrderModel
-        {
-            public string PickticketNumber { get; set; }
+        {            
+            public string PickTicketNumber { get; set; }
 
+            [Required]
             public string OrderNumber { get; set; }
 
+            [Required]
             public char Action { get; set; }
 
+            [Required]
             public int Store { get; set; }
 
+            [Required]
             public AddressModel Customer { get; set; }
 
+            [Required]
             public AddressModel Recipient { get; set; }
 
+            [Required]
             public string ShippingMethod { get; set; }
 
-            public List<DetailModel> Products { get; set; }
+            [Required]
+            public List<DetailModel> LineItems { get; set; }
 
+            [Required]
             public DateTime OrderDate { get; set; }
 
             public int Channel { get; set; }
@@ -406,7 +394,7 @@ namespace WsiApi.HTTP_Triggers
         private static string GenerateOrderHeader(OrderModel order)
         {
             StringBuilder headerCsv = new();
-            headerCsv.Append($"PTH,{order.Action},{order.PickticketNumber},{order.OrderNumber},C,");
+            headerCsv.Append($"PTH,{order.Action},{order.PickTicketNumber},{order.OrderNumber},C,");
             headerCsv.Append($"{order.OrderDate.ToString("MM/dd/yyyy")},");
             headerCsv.Append(new string(',', 3));
             headerCsv.Append("75,");
@@ -439,10 +427,10 @@ namespace WsiApi.HTTP_Triggers
         {
             StringBuilder detailCsv = new();
 
-            order.Products.ForEach(async lineItem =>
+            order.LineItems.ForEach(async lineItem =>
             {
                 detailCsv.Append("PTD,I,");
-                detailCsv.Append($"{order.PickticketNumber},");
+                detailCsv.Append($"{order.PickTicketNumber},");
                 detailCsv.Append($"{lineItem.LineNumber},A,");
                 detailCsv.Append($"{lineItem.Sku}{new string(',', 5)}");
                 detailCsv.Append($"{lineItem.Units},{lineItem.Units}{new string(',', 3)}");
