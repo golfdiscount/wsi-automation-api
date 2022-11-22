@@ -1,15 +1,16 @@
-using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using WsiApi.Data;
 using WsiApi.Models;
+using WsiApi.Services;
 
 namespace WsiApi.Timer_Triggers
 {
@@ -17,14 +18,14 @@ namespace WsiApi.Timer_Triggers
     {
         private readonly HttpClient duffersClient;
         private readonly string cs;
-        private readonly BlobServiceClient blobServiceClient;
+        private readonly SftpService _wsiSftp;
         public GeneratePos(IHttpClientFactory clientFactory, 
-            SqlConnectionStringBuilder builder, 
-            BlobServiceClient blobServiceClient)
+            SqlConnectionStringBuilder builder,
+            SftpService wsiSftp)
         {
             duffersClient = clientFactory.CreateClient("dufferscorner");
             cs = builder.ConnectionString;
-            this.blobServiceClient = blobServiceClient;
+            _wsiSftp= wsiSftp;
         }
 
         [FunctionName("GeneratePos")]
@@ -80,13 +81,16 @@ namespace WsiApi.Timer_Triggers
                 }
             }
 
-            BlobContainerClient sftp = blobServiceClient.GetBlobContainerClient("sftp");
-
             foreach (string poNumber in poRecords.Keys)
             {
-                BinaryData csvContents = new(poRecords[poNumber].ToString());
-                sftp.UploadBlob($"RO_{poNumber}.csv", csvContents);
+                Stream fileContents = new MemoryStream();
+                StreamWriter writer = new(fileContents);
+                writer.Flush();
+
+                _wsiSftp.Queue($"Inbound/RO_{poNumber}.csv", fileContents);
             }
+
+            _wsiSftp.UploadQueue();
         }
     }
 }
