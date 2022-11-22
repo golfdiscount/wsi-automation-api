@@ -1,4 +1,3 @@
-using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -16,25 +15,26 @@ using System.Web.Http;
 using WsiApi.Data;
 using WsiApi.Models;
 using System.Text;
+using WsiApi.Services;
 
 namespace WsiApi.HTTP_Triggers
 {
     public class Orders
     {
-        private readonly string cs;
-        private readonly JsonSerializerOptions jsonOptions;
-        private readonly BlobServiceClient blobServiceClient;
-        private readonly HttpClient magento;
+        private readonly string _cs;
+        private readonly JsonSerializerOptions _jsonOptions;
+        private readonly SftpService _wsiSftp;
+        private readonly HttpClient _magento;
 
         public Orders(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
-            BlobServiceClient blobServiceClient,
+            SftpService wsiSftp,
             IHttpClientFactory httpClientFactory)
         {
-            cs = builder.ConnectionString;
-            this.jsonOptions = jsonOptions;
-            this.blobServiceClient = blobServiceClient;
-            magento = httpClientFactory.CreateClient("magento");
+            _cs = builder.ConnectionString;
+            _jsonOptions = jsonOptions;
+            _wsiSftp = wsiSftp;
+            _magento = httpClientFactory.CreateClient("magento");
         }
 
         [FunctionName("Orders")]
@@ -61,7 +61,7 @@ namespace WsiApi.HTTP_Triggers
         /// <returns>HTTP Status result</returns>
         private IActionResult Get()
         {
-            List<HeaderModel> headers = PtHeaders.GetHeader(cs);
+            List<HeaderModel> headers = PtHeaders.GetHeader(_cs);
             List<OrderModel> orders = new();
 
             headers.ForEach(header =>
@@ -71,11 +71,11 @@ namespace WsiApi.HTTP_Triggers
                     PickTicketNumber = header.PickticketNumber,
                     OrderNumber = header.OrderNumber,
                     Action = header.Action,
-                    Store = Data.Stores.GetStore(header.Store, cs)[0].StoreNumber,
-                    Customer = Addresses.GetAddress(header.Customer, cs),
-                    Recipient = Addresses.GetAddress(header.Recipient, cs),
-                    ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, cs).Code,
-                    LineItems = PtDetails.GetDetails(header.PickticketNumber, cs),
+                    Store = Data.Stores.GetStore(header.Store, _cs)[0].StoreNumber,
+                    Customer = Addresses.GetAddress(header.Customer, _cs),
+                    Recipient = Addresses.GetAddress(header.Recipient, _cs),
+                    ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, _cs).Code,
+                    LineItems = PtDetails.GetDetails(header.PickticketNumber, _cs),
                     OrderDate = header.OrderDate,
                     Channel = header.Channel,
                     CreatedAt = header.CreatedAt,
@@ -99,7 +99,7 @@ namespace WsiApi.HTTP_Triggers
         {
             log.LogInformation($"Searching database for order {orderNumber}");
 
-            HeaderModel header = PtHeaders.GetHeader(orderNumber, cs);
+            HeaderModel header = PtHeaders.GetHeader(orderNumber, _cs);
 
             if (header == null)
             {
@@ -111,11 +111,11 @@ namespace WsiApi.HTTP_Triggers
                 PickTicketNumber = header.PickticketNumber,
                 OrderNumber = header.OrderNumber,
                 Action = header.Action,
-                Store = Data.Stores.GetStore(header.Store, cs)[0].StoreNumber,
-                Customer = Addresses.GetAddress(header.Customer, cs),
-                Recipient = Addresses.GetAddress(header.Recipient, cs),
-                ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, cs).Code,
-                LineItems = PtDetails.GetDetails(header.PickticketNumber, cs),
+                Store = Data.Stores.GetStore(header.Store, _cs)[0].StoreNumber,
+                Customer = Addresses.GetAddress(header.Customer, _cs),
+                Recipient = Addresses.GetAddress(header.Recipient, _cs),
+                ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, _cs).Code,
+                LineItems = PtDetails.GetDetails(header.PickticketNumber, _cs),
                 OrderDate = header.OrderDate,
                 Channel = header.Channel,
                 CreatedAt = header.CreatedAt,
@@ -142,7 +142,7 @@ namespace WsiApi.HTTP_Triggers
 
                 if (req.ContentType == "application/json")
                 {
-                    OrderModel order = JsonSerializer.Deserialize<OrderModel>(requestContents, jsonOptions);
+                    OrderModel order = JsonSerializer.Deserialize<OrderModel>(requestContents, _jsonOptions);
                     order.Channel = 2; // TODO: Remove channel hardcoding
                     PostJson(order, log);
 
@@ -160,12 +160,15 @@ namespace WsiApi.HTTP_Triggers
                     return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
                 }
 
-                BinaryData csvContents = new(csv);
-                string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
-                BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
+                Stream fileContents = new MemoryStream();
+                StreamWriter writer = new(fileContents);
+                writer.Flush();
 
-                log.LogInformation($"Uploading blob {fileName} to sftp container");
-                await sftpContainer.UploadBlobAsync(fileName, csvContents);
+                string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
+
+                log.LogInformation($"Queuing {fileName} for SFTP");
+                _wsiSftp.Queue(fileName, fileContents);
+                int fileUploadCount = _wsiSftp.UploadQueue();
 
                 return new StatusCodeResult(201);
             }
@@ -226,7 +229,7 @@ namespace WsiApi.HTTP_Triggers
 
             try
             {
-                int customerId = Addresses.InsertAddress(order.Customer, cs);
+                int customerId = Addresses.InsertAddress(order.Customer, _cs);
                 int recipientId;
 
                 if (order.Customer.Equals(order.Recipient))
@@ -235,7 +238,7 @@ namespace WsiApi.HTTP_Triggers
                 }
                 else
                 {
-                    recipientId = Addresses.InsertAddress(order.Recipient, cs);
+                    recipientId = Addresses.InsertAddress(order.Recipient, _cs);
                 }
 
 
@@ -252,7 +255,7 @@ namespace WsiApi.HTTP_Triggers
                     Channel = order.Channel
                 };
 
-                PtHeaders.InsertHeader(header, cs);
+                PtHeaders.InsertHeader(header, _cs);
 
                 int productCount = 0;
                 order.LineItems.ForEach(product =>
@@ -267,7 +270,7 @@ namespace WsiApi.HTTP_Triggers
                         Units = product.Units,
                         UnitsToShip = product.Units
                     };
-                    PtDetails.InsertDetail(detail, cs);
+                    PtDetails.InsertDetail(detail, _cs);
                 });
             }
             catch (Exception)
@@ -436,11 +439,11 @@ namespace WsiApi.HTTP_Triggers
                 detailCsv.Append($"{lineItem.Sku}{new string(',', 5)}");
                 detailCsv.Append($"{lineItem.Units},{lineItem.Units}{new string(',', 3)}");
 
-                HttpResponseMessage response = await magento.GetAsync($"/api/products/{lineItem.Sku}");
+                HttpResponseMessage response = await _magento.GetAsync($"/api/products/{lineItem.Sku}");
                 response.EnsureSuccessStatusCode();
                 HttpContent content = response.Content;
 
-                MagentoProduct product = JsonSerializer.Deserialize<MagentoProduct>(await content.ReadAsStringAsync(), jsonOptions);
+                MagentoProduct product = JsonSerializer.Deserialize<MagentoProduct>(await content.ReadAsStringAsync(), _jsonOptions);
 
                 detailCsv.Append($"{product.Price}{new string(',', 3)}");
                 detailCsv.Append($"HN,PGD{new string(',', 8)}");
