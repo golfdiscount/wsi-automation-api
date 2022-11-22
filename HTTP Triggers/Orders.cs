@@ -167,7 +167,7 @@ namespace WsiApi.HTTP_Triggers
                 string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
 
                 log.LogInformation($"Queuing {fileName} for SFTP");
-                _wsiSftp.Queue(fileName, fileContents);
+                _wsiSftp.Queue($"Inbound/{fileName}", fileContents);
                 int fileUploadCount = _wsiSftp.UploadQueue();
 
                 return new StatusCodeResult(201);
