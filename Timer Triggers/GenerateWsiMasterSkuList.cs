@@ -1,21 +1,21 @@
-using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
-using System;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using WsiApi.Services;
 
 namespace WsiApi.Timer_Triggers
 {
     public class GenerateWsiMasterSkuList
     {
         private readonly HttpClient duffersClient;
-        private readonly BlobServiceClient blobServiceClient;
-        public GenerateWsiMasterSkuList(IHttpClientFactory clientFactory, BlobServiceClient blobServiceClient)
+        private readonly SftpService _wsiSftp;
+        public GenerateWsiMasterSkuList(IHttpClientFactory clientFactory, SftpService wsiSftp)
         {
             duffersClient = clientFactory.CreateClient("dufferscorner");
-            this.blobServiceClient = blobServiceClient;
+            _wsiSftp= wsiSftp;
         }
 
         [FunctionName("GenerateWsiMasterSkuList")]
@@ -45,14 +45,17 @@ namespace WsiApi.Timer_Triggers
                 skuCsv.Append("N,N,N,");
                 skuCsv.Append($"{tokens[10]},{tokens[11].Trim()}");
                 skuCsv.Append(new string(',', 10));
-                skuCsv.Append('\n');
+                skuCsv.AppendLine();
             }
+            Stream fileContents = new MemoryStream();
+            StreamWriter writer = new(fileContents);
+            writer.Write(skuCsv);
+            writer.Flush();
 
-            BinaryData csvBytes = new(skuCsv.ToString());
+            _wsiSftp.Queue("Inbound/SKU.csv", fileContents);
+            int uploadCount = _wsiSftp.UploadQueue();
 
-            BlobContainerClient sftpContainer = blobServiceClient.GetBlobContainerClient("sftp");
-            BlobClient skuCsvClient = sftpContainer.GetBlobClient("SKU.csv");
-            await skuCsvClient.UploadAsync(csvBytes, true);
+            log.LogInformation($"Uploaded {uploadCount} file(s) to WSI");
         }
     }
 }
