@@ -162,6 +162,7 @@ namespace WsiApi.HTTP_Triggers
 
                 Stream fileContents = new MemoryStream();
                 StreamWriter writer = new(fileContents);
+                writer.Write(csv);
                 writer.Flush();
 
                 string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
@@ -422,7 +423,7 @@ namespace WsiApi.HTTP_Triggers
             headerCsv.Append(new string(',', 6));
             headerCsv.Append('Y' + new string(',', 4));
             headerCsv.Append("PT" + new string(',', 12));
-            headerCsv.Append('\n');
+            headerCsv.AppendLine();
 
             return headerCsv.ToString();
         }
@@ -447,7 +448,7 @@ namespace WsiApi.HTTP_Triggers
 
                 detailCsv.Append($"{product.Price}{new string(',', 3)}");
                 detailCsv.Append($"HN,PGD{new string(',', 8)}");
-                detailCsv.Append('\n');
+                detailCsv.AppendLine();
             });
 
             return detailCsv.ToString();

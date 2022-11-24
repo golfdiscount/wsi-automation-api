@@ -85,6 +85,7 @@ namespace WsiApi.Timer_Triggers
             {
                 Stream fileContents = new MemoryStream();
                 StreamWriter writer = new(fileContents);
+                writer.Write(poRecords[poNumber]);
                 writer.Flush();
 
                 _wsiSftp.Queue($"Inbound/RO_{poNumber}.csv", fileContents);
