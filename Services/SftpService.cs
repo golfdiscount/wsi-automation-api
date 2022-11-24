@@ -50,7 +50,7 @@ namespace WsiApi.Services
             {
                 Tuple<Stream, string> file = sftpQueue.Peek();
 
-                sftp.UploadFile(file.Item1, file.Item2)
+                sftp.UploadFile(file.Item1, file.Item2);
                 successCount++;
                 sftpQueue.Dequeue();
             }
