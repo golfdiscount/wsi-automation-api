@@ -170,6 +170,7 @@ namespace WsiApi.HTTP_Triggers
                 log.LogInformation($"Queuing {fileName} for SFTP");
                 _wsiSftp.Queue($"Inbound/{fileName}", fileContents);
                 int fileUploadCount = _wsiSftp.UploadQueue();
+                log.LogInformation($"Uploaded {fileUploadCount} file(s) to WSI");
 
                 return new StatusCodeResult(201);
             }

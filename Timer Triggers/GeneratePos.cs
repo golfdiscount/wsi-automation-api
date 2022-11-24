@@ -91,7 +91,8 @@ namespace WsiApi.Timer_Triggers
                 _wsiSftp.Queue($"Inbound/RO_{poNumber}.csv", fileContents);
             }
 
-            _wsiSftp.UploadQueue();
+            int uploadCount = _wsiSftp.UploadQueue();
+            log.LogInformation($"Uploaded {uploadCount} POs to WSI");
         }
     }
 }
