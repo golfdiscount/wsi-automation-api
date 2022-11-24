@@ -13,6 +13,7 @@ namespace WsiApi.Services
         public SftpService(string host, string user, string pass)
         {
             sftp = new(host, user, pass);    
+            sftpQueue= new Queue<Tuple<Stream, string>>();
         }
 
         /// <summary>
@@ -43,12 +44,19 @@ namespace WsiApi.Services
         /// <returns>Count of files that were successfully uploaded</returns>
         public int UploadQueue()
         {
+            if (sftpQueue.Count == 0)
+            {
+                return 0;
+            }
             Open();
             int successCount = 0;
 
             while (sftpQueue.Count > 0)
             {
                 Tuple<Stream, string> file = sftpQueue.Peek();
+
+                // Ensure that the cursor for stream is at start to avoid empty file upload
+                file.Item1.Position = 0;
 
                 sftp.UploadFile(file.Item1, file.Item2);
                 successCount++;
