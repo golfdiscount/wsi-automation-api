@@ -54,6 +54,8 @@ namespace WsiApi.Timer_Triggers
 
             _wsiSftp.Queue("Inbound/SKU.csv", fileContents);
             _wsiSftp.UploadQueue();
+
+            log.LogInformation($"Uploaded {records.Length} records");
         }
     }
 }
