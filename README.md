@@ -47,12 +47,6 @@ must at a minimum have `GET` permissions for KeyVault secrets.**
 
 # Triggers
 
-## Blob Triggers
-
-### SftpBlob
-Triggers on the blob storage path `sftp/{name}` and initiates SFTP for the blob to WSI at the path
-`Inbound/{name}`.
-
 ## HTTP Triggers
 
 ### Orders
@@ -66,15 +60,7 @@ You can get a singular order or a list of recent orders at the path `/api/orders
     "pickTicketNumber": "Unique pickticket number",
     "orderNumber": "Original order number from Magento",
     "action": "Order action (typically I for insert)",
-    "store": {
-        "name": "Pro Golf Internet",
-        "street": "13405 SE 30th St Suite 1A",
-        "city": "Bellevue",
-        "state": "WA",
-        "country": "US",
-        "zip": "98005",
-        "storeNumber": 1
-    },
+    "store": 1,
     "customer": {
         "name": "Customer name",
         "street": "Customer street address",
@@ -91,12 +77,7 @@ You can get a singular order or a list of recent orders at the path `/api/orders
         "country": "Recipient country",
         "zip": "Recipient zip code"
     },
-    "shippingMethod": {
-        "code": "FDXH",
-        "description": "FedEx Home Delivery",
-        "created_at": "2022-08-04T23:47:04.59",
-        "updated_at": "2022-08-04T23:47:04.59"
-    },
+    "shippingMethod": "FDXH",
     "lineItems": [
         {
             "pickticketNumber": "Unique pickticket number",
