@@ -23,11 +23,8 @@ The key points are as follows:
 
 - AzureWebJobsStorage: The URI for the storage account the function app can use
 - FUNCTIONS_WORKER_RUNTIME: Function worker language runtime, should be set to "dotnet"
+- FUNCTIONS_WORKER_RUNTIME_VERSION: Azure functions host extension version, should be set to "~4"
 - VAULT_URI: URI to an Azure KeyVault holding connection string, API keys, and other sensitive materials
-- WSI_MASTER_SKU_URI: URI to a CSV file containing a master list of all SKUs that should be in WSI's inventory
-- WSI_PO_DAILY_URI: URI to a CSV file containing current open POs from Eagle that need to be sent to WSI
-- WSI_PO_MASTER_URI: URI to a CSV file containing all line items for all open POs for WSI
-
 
 ## KeyVault Secrets
 **The following KeyVault secrets are required. Whoever is developing/debugging the application
