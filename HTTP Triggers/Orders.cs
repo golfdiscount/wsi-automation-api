@@ -131,7 +131,7 @@ namespace WsiApi.HTTP_Triggers
         /// <param name="req">HttpRequest containing POST data</param>
         /// <param name="log">Logging object</param>
         /// <returns>A result indicating HTTP status of POST request</returns>
-        private async Task<IActionResult> Post(HttpRequest req, ILogger log)
+        private IActionResult Post(HttpRequest req, ILogger log)
         {
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd().Trim();
