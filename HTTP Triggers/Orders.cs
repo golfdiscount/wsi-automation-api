@@ -45,7 +45,7 @@ namespace WsiApi.HTTP_Triggers
         {
             if (req.Method == "POST")
             {
-                return await Post(req, log);
+                return Post(req, log);
             }
             if (orderNumber == null)
             {
