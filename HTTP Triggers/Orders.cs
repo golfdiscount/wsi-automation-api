@@ -25,6 +25,7 @@ namespace WsiApi.HTTP_Triggers
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly SftpService _wsiSftp;
         private readonly HttpClient _magento;
+        private readonly HttpClient _duffers;
 
         public Orders(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
@@ -35,6 +36,7 @@ namespace WsiApi.HTTP_Triggers
             _jsonOptions = jsonOptions;
             _wsiSftp = wsiSftp;
             _magento = httpClientFactory.CreateClient("magento");
+            _duffers = httpClientFactory.CreateClient("dufferscorner");
         }
 
         [FunctionName("Orders")]
@@ -45,7 +47,7 @@ namespace WsiApi.HTTP_Triggers
         {
             if (req.Method == "POST")
             {
-                return Post(req, log);
+                return await Post(req, log);
             }
             if (orderNumber == null)
             {
@@ -131,7 +133,7 @@ namespace WsiApi.HTTP_Triggers
         /// <param name="req">HttpRequest containing POST data</param>
         /// <param name="log">Logging object</param>
         /// <returns>A result indicating HTTP status of POST request</returns>
-        private IActionResult Post(HttpRequest req, ILogger log)
+        private async Task<IActionResult> Post(HttpRequest req, ILogger log)
         {
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd().Trim();
@@ -147,12 +149,15 @@ namespace WsiApi.HTTP_Triggers
                     PostJson(order, log);
 
                     csv = GenerateOrderHeader(order);
-                    csv += GenerateOrderDetail(order);
+
+                    foreach (DetailModel lineItem in order.LineItems)
+                    {
+                        csv += (await GenerateOrderDetail(order.PickTicketNumber, lineItem));
+                    }
                 }
                 else if (req.ContentType == "text/csv")
                 {
-                    PostCsv(requestContents, log);
-                    csv = requestContents;
+                    csv = await PostCsv(requestContents, log);
                 }
                 else
                 {
@@ -203,15 +208,73 @@ namespace WsiApi.HTTP_Triggers
             InsertOrder(order);
         }
 
-        private void PostCsv(string csv, ILogger log)
+        private async Task<string> PostCsv(string csv, ILogger log)
         {
-            Dictionary<string, OrderModel> orders = ParseCsv(csv);
+            // Get SKUs that qualify for free two day shipping
+            HttpResponseMessage response = await _duffers.GetAsync("media/2day_skus.csv");
+            response.EnsureSuccessStatusCode();
 
-            foreach (var order in orders)
+            string csvContents = await response.Content.ReadAsStringAsync();
+            string[] records = csvContents.Trim().Replace("\"", string.Empty).Split("\r\n");
+            // Remove header
+            records = records[1..];
+
+            HashSet<string> skus = new(records);
+            Dictionary<string, OrderModel> orders = ParseCsv(csv);
+            StringBuilder orderCsv = new();
+
+            foreach (var orderKey in orders)
             {
-                log.LogInformation($"Inserting {order.Value.OrderNumber} into the database");
-                InsertOrder(order.Value);
+                OrderModel order = orderKey.Value;
+                List<DetailModel> expeditedItems = new();
+                OrderModel expeditedOrder = null;
+
+                for (int i = order.LineItems.Count - 1; i >= 0; i--)
+                {
+                    DetailModel lineItem = order.LineItems[i];
+
+                    if (skus.Contains(lineItem.Sku))
+                    {
+                        if (order.LineItems.Count == 1)
+                        {
+                            order.ShippingMethod = "FX2D";
+                        }
+                        else
+                        {
+                            expeditedOrder ??= order.DeepClone();
+                            order.LineItems.RemoveAt(i);
+                            expeditedItems.Add(lineItem);
+                        }
+                    }
+                }
+
+                log.LogInformation($"Inserting {order.PickTicketNumber} for {order.OrderNumber} into the database");
+                InsertOrder(order);
+                orderCsv.Append(GenerateOrderHeader(order));
+
+                foreach (DetailModel lineItem in order.LineItems)
+                {
+                    orderCsv.Append(await GenerateOrderDetail(order.PickTicketNumber, lineItem));
+                }
+
+                if (expeditedOrder != null)
+                {
+                    expeditedOrder.PickTicketNumber += "-1";
+                    expeditedOrder.ShippingMethod = "FX2D";
+                    expeditedOrder.LineItems = expeditedItems;
+                    log.LogInformation($"Inserting pick ticket {expeditedOrder.PickTicketNumber} for order {expeditedOrder.OrderNumber} into the database");
+                    InsertOrder(expeditedOrder);
+
+                    orderCsv.Append(GenerateOrderHeader(expeditedOrder));
+
+                    foreach (DetailModel lineItem in expeditedOrder.LineItems)
+                    {
+                        orderCsv.Append(await GenerateOrderDetail(expeditedOrder.PickTicketNumber, lineItem));
+                    }
+                }
             }
+
+            return orderCsv.ToString();
         }
 
         /// <summary>
@@ -246,7 +309,7 @@ namespace WsiApi.HTTP_Triggers
 
                 HeaderModel header = new()
                 {
-                    PickticketNumber = "C" + order.OrderNumber,
+                    PickticketNumber = order.PickTicketNumber ?? "C" + order.OrderNumber,
                     OrderNumber = order.OrderNumber,
                     Action = 'I',
                     Store = order.Store,
@@ -317,6 +380,7 @@ namespace WsiApi.HTTP_Triggers
                 if (!orders.ContainsKey(pickticketNum))
                 {
                     orders.Add(pickticketNum, new());
+                    orders[pickticketNum].PickTicketNumber= pickticketNum;
                     orders[pickticketNum].LineItems = new();
                     orders[pickticketNum].Channel = 1;
                 }
@@ -353,7 +417,7 @@ namespace WsiApi.HTTP_Triggers
                     order.LineItems.Add(new()
                     {
                         Sku = fields[5],
-                        Units = int.Parse(fields[10])
+                        Units = int.Parse(fields[10]),
                     });
                 }
             }
@@ -394,8 +458,27 @@ namespace WsiApi.HTTP_Triggers
             public DateTime CreatedAt { get; set; }
 
             public DateTime UpdatedAt { get; set; }
+
+
+            /// <summary>
+            /// Creates a deep clone of the current <c>OrderModel</c> object with a blank list of <c>LineItems</c>
+            /// and a new <c>PickticketNumber</c> generated by <c>System.Guid</c>
+            /// </summary>
+            /// <returns></returns>
+            public OrderModel DeepClone()
+            {
+                OrderModel order = (OrderModel) MemberwiseClone();
+                order.LineItems = new();
+
+                return order;
+            }
         }
 
+        /// <summary>
+        /// Generates a header CSV record in WSI's specified format with a new line terminator
+        /// </summary>
+        /// <param name="order">Order to generate the header for</param>
+        /// <returns>CSV record with a new line terminator</returns>
         private static string GenerateOrderHeader(OrderModel order)
         {
             StringBuilder headerCsv = new();
@@ -429,28 +512,31 @@ namespace WsiApi.HTTP_Triggers
             return headerCsv.ToString();
         }
 
-        private string GenerateOrderDetail(OrderModel order)
+        /// <summary>
+        /// Generates a series of CSV detail records in WSI's specified format with a new line terminator
+        /// </summary>
+        /// <param name="order">Order to generate detail records for</param>
+        /// <returns>CSV records separated by new line terminators</returns>
+        private async Task<string> GenerateOrderDetail(string pickTicketNumber, DetailModel lineItem)
         {
             StringBuilder detailCsv = new();
 
-            order.LineItems.ForEach(async lineItem =>
-            {
-                detailCsv.Append("PTD,I,");
-                detailCsv.Append($"{order.PickTicketNumber},");
-                detailCsv.Append($"{lineItem.LineNumber},A,");
-                detailCsv.Append($"{lineItem.Sku}{new string(',', 5)}");
-                detailCsv.Append($"{lineItem.Units},{lineItem.Units}{new string(',', 3)}");
+            detailCsv.Append("PTD,I,");
+            detailCsv.Append($"{pickTicketNumber},");
+            detailCsv.Append($"{lineItem.LineNumber},A,");
+            detailCsv.Append($"{lineItem.Sku}{new string(',', 5)}");
+            detailCsv.Append($"{lineItem.Units},{lineItem.Units}{new string(',', 3)}");
 
-                HttpResponseMessage response = await _magento.GetAsync($"/api/products/{lineItem.Sku}");
-                response.EnsureSuccessStatusCode();
-                HttpContent content = response.Content;
+            HttpResponseMessage response = await _magento.GetAsync($"/api/products/{lineItem.Sku}");
+            response.EnsureSuccessStatusCode();
+            HttpContent content = response.Content;
 
-                MagentoProduct product = JsonSerializer.Deserialize<MagentoProduct>(await content.ReadAsStringAsync(), _jsonOptions);
+            MagentoProduct product = JsonSerializer.Deserialize<MagentoProduct>(await content.ReadAsStringAsync(), _jsonOptions);
 
-                detailCsv.Append($"{product.Price}{new string(',', 3)}");
-                detailCsv.Append($"HN,PGD{new string(',', 8)}");
-                detailCsv.AppendLine();
-            });
+            detailCsv.Append($"{product.Price}{new string(',', 3)}");
+            detailCsv.Append($"HN,PGD{new string(',', 8)}");
+            detailCsv.AppendLine();
+
 
             return detailCsv.ToString();
         }
