@@ -6,21 +6,56 @@ namespace WsiApi.Data
 {
     public static class PickTicket
     {
-        public static PickTicketModel GetPickTicket(string orderNumber, string connString)
+        public static List<PickTicketModel> GetPickTicket(string connString)
         {
             using SqlConnection conn = new(connString);
             conn.Open();
 
-            try
+            List<PickTicketModel> pickTickets = new();
+
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT TOP 30 * FROM [pt_header] ORDER BY [created_at] DESC";
+
+            using SqlDataReader reader = cmd.ExecuteReader();
+
+            int pickticketNumberIdx = reader.GetOrdinal("pick_ticket_number");
+            int orderNumberIdx = reader.GetOrdinal("order_number");
+            int actionIdx = reader.GetOrdinal("action");
+            int storeIdx = reader.GetOrdinal("store");
+            int customerIdx = reader.GetOrdinal("customer");
+            int recipientIdx = reader.GetOrdinal("recipient");
+            int shippingMethodIdx = reader.GetOrdinal("shipping_method");
+            int orderDateIdx = reader.GetOrdinal("order_date");
+            int channelIdx = reader.GetOrdinal("channel");
+            int createdIdx = reader.GetOrdinal("created_at");
+            int updatedIdx = reader.GetOrdinal("updated_at");
+
+            List<HeaderModel> headers = new();
+
+            while (reader.Read())
             {
-                HeaderModel header = GetHeader(orderNumber, conn);
-
-                if (header == null)
+                HeaderModel header = new()
                 {
-                    conn.Close();
-                    return null;
-                }
+                    PickTicketNumber = reader.GetString(pickticketNumberIdx),
+                    OrderNumber = reader.GetString(orderNumberIdx),
+                    Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
+                    Store = reader.GetInt32(storeIdx),
+                    Customer = reader.GetInt32(customerIdx),
+                    Recipient = reader.GetInt32(recipientIdx),
+                    ShippingMethod = reader.GetString(shippingMethodIdx),
+                    OrderDate = reader.GetDateTime(orderDateIdx),
+                    Channel = reader.GetInt32(channelIdx),
+                    CreatedAt = reader.GetDateTime(createdIdx),
+                    UpdatedAt = reader.GetDateTime(updatedIdx)
+                };
 
+                headers.Add(header);
+            }
+
+            reader.Close();
+
+            foreach (HeaderModel header in headers)
+            {
                 List<DetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
                 AddressModel customer = GetAddress(header.Customer, conn);
@@ -29,7 +64,7 @@ namespace WsiApi.Data
                 PickTicketModel ticket = new()
                 {
                     PickTicketNumber = header.PickTicketNumber,
-                    OrderNumber = orderNumber,
+                    OrderNumber = header.OrderNumber,
                     Action = header.Action,
                     Store = header.Store,
                     Customer = customer,
@@ -42,7 +77,49 @@ namespace WsiApi.Data
                     UpdatedAt = header.UpdatedAt,
                 };
 
-                return ticket;
+                pickTickets.Add(ticket);
+            }
+
+            return pickTickets;
+        }
+
+        public static List<PickTicketModel> GetPickTicket(string orderNumber, string connString)
+        {
+            using SqlConnection conn = new(connString);
+            conn.Open();
+
+            try
+            {
+                List<PickTicketModel> pickTickets = new();
+                List<HeaderModel> headers = GetHeader(orderNumber, conn);
+
+                foreach (HeaderModel header in headers)
+                {
+                    List<DetailModel> details = GetDetail(header.PickTicketNumber, conn);
+
+                    AddressModel customer = GetAddress(header.Customer, conn);
+                    AddressModel recipient = GetAddress(header.Recipient, conn);
+
+                    PickTicketModel ticket = new()
+                    {
+                        PickTicketNumber = header.PickTicketNumber,
+                        OrderNumber = orderNumber,
+                        Action = header.Action,
+                        Store = header.Store,
+                        Customer = customer,
+                        Recipient = recipient,
+                        ShippingMethod = header.ShippingMethod,
+                        LineItems = details,
+                        OrderDate = header.OrderDate,
+                        Channel = header.Channel,
+                        CreatedAt = header.CreatedAt,
+                        UpdatedAt = header.UpdatedAt,
+                    };
+
+                    pickTickets.Add(ticket);
+                }
+
+                return pickTickets;
             } catch
             {
                 throw;
@@ -92,6 +169,7 @@ namespace WsiApi.Data
                 {
                     line.PickTicketNumber = orderHeader.PickTicketNumber;
                     line.UnitsToShip = line.Units;
+                    line.Action = 'I';
                     InsertDetail(line, conn, transaction);
                 });
 
@@ -108,7 +186,7 @@ namespace WsiApi.Data
             }
         }
 
-        private static HeaderModel GetHeader(string orderNumber, SqlConnection conn)
+        private static List<HeaderModel> GetHeader(string orderNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT * FROM [pt_header] WHERE [pt_header].[order_number] = @number;";
@@ -133,24 +211,29 @@ namespace WsiApi.Data
                 return null;
             }
 
-            reader.Read();
+            List<HeaderModel> headers = new();
 
-            HeaderModel header = new()
+            while(reader.Read())
             {
-                PickTicketNumber = reader.GetString(pickticketNumberIdx),
-                OrderNumber = reader.GetString(orderNumberIdx),
-                Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
-                Store = reader.GetInt32(storeIdx),
-                Customer = reader.GetInt32(customerIdx),
-                Recipient = reader.GetInt32(recipientIdx),
-                ShippingMethod = reader.GetString(shippingMethodIdx),
-                OrderDate = reader.GetDateTime(orderDateIdx),
-                Channel = reader.GetInt32(channelIdx),
-                CreatedAt = reader.GetDateTime(createdIdx),
-                UpdatedAt = reader.GetDateTime(updatedIdx)
-            };
+                HeaderModel header = new()
+                {
+                    PickTicketNumber = reader.GetString(pickticketNumberIdx),
+                    OrderNumber = reader.GetString(orderNumberIdx),
+                    Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
+                    Store = reader.GetInt32(storeIdx),
+                    Customer = reader.GetInt32(customerIdx),
+                    Recipient = reader.GetInt32(recipientIdx),
+                    ShippingMethod = reader.GetString(shippingMethodIdx),
+                    OrderDate = reader.GetDateTime(orderDateIdx),
+                    Channel = reader.GetInt32(channelIdx),
+                    CreatedAt = reader.GetDateTime(createdIdx),
+                    UpdatedAt = reader.GetDateTime(updatedIdx)
+                };
 
-            return header;
+                headers.Add(header);
+            }
+
+            return headers;
         }
 
         private static AddressModel GetAddress(int addressId, SqlConnection conn)
