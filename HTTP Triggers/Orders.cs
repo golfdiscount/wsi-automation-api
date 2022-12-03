@@ -16,6 +16,7 @@ using System.Web.Http;
 using WsiApi.Data;
 using WsiApi.Models;
 using WsiApi.Services;
+using WsiApi.Models.PickTicket;
 
 namespace WsiApi.HTTP_Triggers
 {
@@ -114,7 +115,7 @@ namespace WsiApi.HTTP_Triggers
 
                     csv = GenerateOrderHeader(order);
 
-                    foreach (DetailModel lineItem in order.LineItems)
+                    foreach (PickTicketDetailModel lineItem in order.LineItems)
                     {
                         csv += (await GenerateOrderDetail(order.PickTicketNumber, lineItem));
                     }
@@ -191,13 +192,13 @@ namespace WsiApi.HTTP_Triggers
             foreach (var orderKey in orders)
             {
                 PickTicketModel order = orderKey.Value;
-                List<DetailModel> expeditedItems = new();
+                List<PickTicketDetailModel> expeditedItems = new();
                 PickTicketModel expeditedOrder = null;
                 List<int> indicesToDelete = new();
 
                 for (int i = order.LineItems.Count - 1; i >= 0; i--)
                 {
-                    DetailModel lineItem = order.LineItems[i];
+                    PickTicketDetailModel lineItem = order.LineItems[i];
 
                     if (skus.Contains(lineItem.Sku))
                     {
@@ -225,7 +226,7 @@ namespace WsiApi.HTTP_Triggers
                 PickTicket.InsertPickTicket(order, _cs);
                 orderCsv.Append(GenerateOrderHeader(order));
 
-                foreach (DetailModel lineItem in order.LineItems)
+                foreach (PickTicketDetailModel lineItem in order.LineItems)
                 {
                     orderCsv.Append(await GenerateOrderDetail(order.PickTicketNumber, lineItem));
                 }
@@ -241,7 +242,7 @@ namespace WsiApi.HTTP_Triggers
 
                     orderCsv.Append(GenerateOrderHeader(expeditedOrder));
 
-                    foreach (DetailModel lineItem in expeditedOrder.LineItems)
+                    foreach (PickTicketDetailModel lineItem in expeditedOrder.LineItems)
                     {
                         orderCsv.Append(await GenerateOrderDetail(expeditedOrder.PickTicketNumber, lineItem));
                     }
@@ -376,7 +377,7 @@ namespace WsiApi.HTTP_Triggers
         /// </summary>
         /// <param name="order">Order to generate detail records for</param>
         /// <returns>CSV records separated by new line terminators</returns>
-        private async Task<string> GenerateOrderDetail(string pickTicketNumber, DetailModel lineItem)
+        private async Task<string> GenerateOrderDetail(string pickTicketNumber, PickTicketDetailModel lineItem)
         {
             StringBuilder detailCsv = new();
 

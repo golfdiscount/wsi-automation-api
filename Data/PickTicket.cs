@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using WsiApi.Models;
+using WsiApi.Models.PickTicket;
 
 namespace WsiApi.Data
 {
@@ -35,11 +36,11 @@ namespace WsiApi.Data
             int createdIdx = reader.GetOrdinal("created_at");
             int updatedIdx = reader.GetOrdinal("updated_at");
 
-            List<HeaderModel> headers = new();
+            List<PickTicketHeaderModel> headers = new();
 
             while (reader.Read())
             {
-                HeaderModel header = new()
+                PickTicketHeaderModel header = new()
                 {
                     PickTicketNumber = reader.GetString(pickticketNumberIdx),
                     OrderNumber = reader.GetString(orderNumberIdx),
@@ -59,9 +60,9 @@ namespace WsiApi.Data
 
             reader.Close();
 
-            foreach (HeaderModel header in headers)
+            foreach (PickTicketHeaderModel header in headers)
             {
-                List<DetailModel> details = GetDetail(header.PickTicketNumber, conn);
+                List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
                 AddressModel customer = GetAddress(header.Customer, conn);
                 AddressModel recipient = GetAddress(header.Recipient, conn);
@@ -102,11 +103,11 @@ namespace WsiApi.Data
             try
             {
                 List<PickTicketModel> pickTickets = new();
-                List<HeaderModel> headers = GetHeader(orderNumber, conn);
+                List<PickTicketHeaderModel> headers = GetHeader(orderNumber, conn);
 
-                foreach (HeaderModel header in headers)
+                foreach (PickTicketHeaderModel header in headers)
                 {
-                    List<DetailModel> details = GetDetail(header.PickTicketNumber, conn);
+                    List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
                     AddressModel customer = GetAddress(header.Customer, conn);
                     AddressModel recipient = GetAddress(header.Recipient, conn);
@@ -168,7 +169,7 @@ namespace WsiApi.Data
                     recipientId = InsertAddress(pickTicket.Recipient, conn, transaction);
                 }
 
-                HeaderModel orderHeader = new()
+                PickTicketHeaderModel orderHeader = new()
                 {
                     PickTicketNumber = pickTicket.PickTicketNumber,
                     OrderNumber = pickTicket.OrderNumber,
@@ -210,7 +211,7 @@ namespace WsiApi.Data
         /// <param name="orderNumber">Order number to get headers for.</param>
         /// <param name="conn">Currently open SQL Server connection.</param>
         /// <returns>A list of headers.</returns>
-        private static List<HeaderModel> GetHeader(string orderNumber, SqlConnection conn)
+        private static List<PickTicketHeaderModel> GetHeader(string orderNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT * FROM [pt_header] WHERE [pt_header].[order_number] = @number;";
@@ -235,11 +236,11 @@ namespace WsiApi.Data
                 return null;
             }
 
-            List<HeaderModel> headers = new();
+            List<PickTicketHeaderModel> headers = new();
 
             while(reader.Read())
             {
-                HeaderModel header = new()
+                PickTicketHeaderModel header = new()
                 {
                     PickTicketNumber = reader.GetString(pickticketNumberIdx),
                     OrderNumber = reader.GetString(orderNumberIdx),
@@ -305,7 +306,7 @@ namespace WsiApi.Data
         /// <param name="pickTicketNumber">Pick ticket number to get details for.</param>
         /// <param name="conn">Currently open SQL Server connection.</param>
         /// <returns>List of details.</returns>
-        private static List<DetailModel> GetDetail(string pickTicketNumber, SqlConnection conn)
+        private static List<PickTicketDetailModel> GetDetail(string pickTicketNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT * FROM [pt_detail] WHERE [pt_detail].[pick_ticket_number] = @number";
@@ -322,11 +323,11 @@ namespace WsiApi.Data
             int createdIdx = reader.GetOrdinal("created_at");
             int updatedIdx = reader.GetOrdinal("updated_at");
 
-            List<DetailModel> details = new();
+            List<PickTicketDetailModel> details = new();
 
             while (reader.Read())
             {
-                DetailModel detail = new()
+                PickTicketDetailModel detail = new()
                 {
                     PickTicketNumber = reader.GetString(pickticketIdx),
                     LineNumber = reader.GetInt32(lineNumberIdx),
@@ -350,7 +351,7 @@ namespace WsiApi.Data
         /// <param name="header">Header to be inserted.</param>
         /// <param name="conn">Currently open SQL Server connection.</param>
         /// <param name="transaction">Transaction for the current connection.</param>
-        private static void InsertHeader(HeaderModel header, SqlConnection conn, SqlTransaction transaction)
+        private static void InsertHeader(PickTicketHeaderModel header, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.Transaction = transaction;
@@ -403,7 +404,7 @@ namespace WsiApi.Data
         /// <param name="detail">Detail to be inserted.</param>
         /// <param name="conn">Currently open SQL Server connection.</param>
         /// <param name="transaction">Transaction for the current connection.</param>
-        private static void InsertDetail(DetailModel detail, SqlConnection conn, SqlTransaction transaction)
+        private static void InsertDetail(PickTicketDetailModel detail, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.Transaction = transaction;

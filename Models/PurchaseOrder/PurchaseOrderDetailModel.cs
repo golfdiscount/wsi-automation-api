@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WsiApi.Models
+namespace WsiApi.Models.PurchaseOrder
 {
     public class PurchaseOrderDetailModel
     {
@@ -14,7 +14,7 @@ namespace WsiApi.Models
 
         public int Units { get; set; }
 
-        public DateTime CreatedAt { get; set; } 
+        public DateTime CreatedAt { get; set; }
 
         public DateTime UpdatedAt { get; set; }
     }

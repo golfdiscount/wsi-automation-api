@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WsiApi.Models
+namespace WsiApi.Models.PickTicket
 {
     public class PickTicketHeaderModel
     {

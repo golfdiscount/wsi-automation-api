@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using WsiApi.Data;
-using WsiApi.Models;
+using WsiApi.Models.PurchaseOrder;
 
 namespace WsiApi.HTTP_Triggers
 {
@@ -35,7 +35,7 @@ namespace WsiApi.HTTP_Triggers
                 return new NotFoundResult();
             }
 
-            List<PoDetailModel> details = PoDetails.GetDetail(poNumber, cs);
+            List<PurchaseOrderDetailModel> details = PoDetails.GetDetail(poNumber, cs);
 
             PoModel po = new()
             {
@@ -46,7 +46,7 @@ namespace WsiApi.HTTP_Triggers
                 LineItems = new()
             };
 
-            foreach (PoDetailModel detail in details)
+            foreach (PurchaseOrderDetailModel detail in details)
             {
                 po.LineItems.Add(detail);
             }
@@ -64,7 +64,7 @@ namespace WsiApi.HTTP_Triggers
 
             public DateTime UpdatedAt { get; set; }
 
-            public List<PoDetailModel> LineItems { get; set; }
+            public List<PurchaseOrderDetailModel> LineItems { get; set; }
         }
     }
 }

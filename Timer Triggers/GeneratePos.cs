@@ -9,7 +9,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using WsiApi.Data;
-using WsiApi.Models;
+using WsiApi.Models.PurchaseOrder;
 using WsiApi.Services;
 
 namespace WsiApi.Timer_Triggers

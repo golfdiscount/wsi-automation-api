@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using WsiApi.Models;
+using WsiApi.Models.PurchaseOrder;
 
 namespace WsiApi.Data
 {
@@ -10,7 +10,7 @@ namespace WsiApi.Data
         private static readonly string Insert = @"INSERT INTO [po_detail] (po_number, line_number, sku, units)
             VALUES (@po_number, @line_number, @sku, @units);";
 
-        public static List<PoDetailModel> GetDetail(string po_number, string connectionString)
+        public static List<PurchaseOrderDetailModel> GetDetail(string po_number, string connectionString)
         {
             using SqlConnection conn = new(connectionString);
             conn.Open();
@@ -25,7 +25,7 @@ namespace WsiApi.Data
                 return null;
             }
 
-            List<PoDetailModel> details = new();
+            List<PurchaseOrderDetailModel> details = new();
 
             int poNumberIdx = reader.GetOrdinal("po_number");
             int lineNumberIdx = reader.GetOrdinal("line_number");
@@ -54,7 +54,7 @@ namespace WsiApi.Data
             return details;
         }
 
-        public static void InsertDetail(PoDetailModel detail, string connectionString)
+        public static void InsertDetail(PurchaseOrderDetailModel detail, string connectionString)
         {
             using SqlConnection conn = new(connectionString);
             conn.Open();
