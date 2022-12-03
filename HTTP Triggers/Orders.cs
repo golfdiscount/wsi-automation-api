@@ -9,12 +9,12 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web.Http;
 using WsiApi.Data;
 using WsiApi.Models;
-using System.Text;
 using WsiApi.Services;
 
 namespace WsiApi.HTTP_Triggers
@@ -64,20 +64,20 @@ namespace WsiApi.HTTP_Triggers
         private IActionResult Get()
         {
             List<HeaderModel> headers = PtHeaders.GetHeader(_cs);
-            List<OrderModel> orders = new();
+            List<PickTicketModel> orders = new();
 
             headers.ForEach(header =>
             {
-                OrderModel order = new()
+                PickTicketModel order = new()
                 {
-                    PickTicketNumber = header.PickticketNumber,
+                    PickTicketNumber = header.PickTicketNumber,
                     OrderNumber = header.OrderNumber,
                     Action = header.Action,
                     Store = Data.Stores.GetStore(header.Store, _cs)[0].StoreNumber,
                     Customer = Addresses.GetAddress(header.Customer, _cs),
                     Recipient = Addresses.GetAddress(header.Recipient, _cs),
                     ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, _cs).Code,
-                    LineItems = PtDetails.GetDetails(header.PickticketNumber, _cs),
+                    LineItems = PtDetails.GetDetails(header.PickTicketNumber, _cs),
                     OrderDate = header.OrderDate,
                     Channel = header.Channel,
                     CreatedAt = header.CreatedAt,
@@ -101,30 +101,14 @@ namespace WsiApi.HTTP_Triggers
         {
             log.LogInformation($"Searching database for order {orderNumber}");
 
-            HeaderModel header = PtHeaders.GetHeader(orderNumber, _cs);
+            PickTicketModel pickTicket = PickTicket.GetPickTicket(orderNumber, _cs);
 
-            if (header == null)
+            if (pickTicket == null )
             {
                 return new NotFoundResult();
             }
 
-            OrderModel order = new()
-            {
-                PickTicketNumber = header.PickticketNumber,
-                OrderNumber = header.OrderNumber,
-                Action = header.Action,
-                Store = Data.Stores.GetStore(header.Store, _cs)[0].StoreNumber,
-                Customer = Addresses.GetAddress(header.Customer, _cs),
-                Recipient = Addresses.GetAddress(header.Recipient, _cs),
-                ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, _cs).Code,
-                LineItems = PtDetails.GetDetails(header.PickticketNumber, _cs),
-                OrderDate = header.OrderDate,
-                Channel = header.Channel,
-                CreatedAt = header.CreatedAt,
-                UpdatedAt = header.UpdatedAt
-            };
-
-            return new OkObjectResult(order);
+            return new OkObjectResult(pickTicket);
         }
 
         /// <summary>
@@ -144,8 +128,9 @@ namespace WsiApi.HTTP_Triggers
 
                 if (req.ContentType == "application/json")
                 {
-                    OrderModel order = JsonSerializer.Deserialize<OrderModel>(requestContents, _jsonOptions);
+                    PickTicketModel order = JsonSerializer.Deserialize<PickTicketModel>(requestContents, _jsonOptions);
                     order.Channel = 2; // TODO: Remove channel hardcoding
+                    order.PickTicketNumber = "C" + order.OrderNumber;
                     PostJson(order, log);
 
                     csv = GenerateOrderHeader(order);
@@ -202,10 +187,11 @@ namespace WsiApi.HTTP_Triggers
             }
         }
 
-        private void PostJson(OrderModel order, ILogger log)
+        private void PostJson(PickTicketModel order, ILogger log)
         {
             log.LogInformation($"Inserting {order.OrderNumber} into the database");
-            InsertOrder(order);
+            ValidateOrder(order);
+            PickTicket.InsertPickTicket(order, _cs);
         }
 
         private async Task<string> PostCsv(string csv, ILogger log)
@@ -220,14 +206,15 @@ namespace WsiApi.HTTP_Triggers
             records = records[1..];
 
             HashSet<string> skus = new(records);
-            Dictionary<string, OrderModel> orders = ParseCsv(csv);
+            Dictionary<string, PickTicketModel> orders = ParseCsv(csv);
             StringBuilder orderCsv = new();
 
             foreach (var orderKey in orders)
             {
-                OrderModel order = orderKey.Value;
+                PickTicketModel order = orderKey.Value;
                 List<DetailModel> expeditedItems = new();
-                OrderModel expeditedOrder = null;
+                PickTicketModel expeditedOrder = null;
+                List<int> indicesToDelete = new();
 
                 for (int i = order.LineItems.Count - 1; i >= 0; i--)
                 {
@@ -235,21 +222,28 @@ namespace WsiApi.HTTP_Triggers
 
                     if (skus.Contains(lineItem.Sku))
                     {
-                        if (order.LineItems.Count == 1)
-                        {
-                            order.ShippingMethod = "FX2D";
-                        }
-                        else
-                        {
-                            expeditedOrder ??= order.DeepClone();
-                            order.LineItems.RemoveAt(i);
-                            expeditedItems.Add(lineItem);
-                        }
+                        expeditedItems.Add(lineItem);
+                        indicesToDelete.Add(i);
                     }
                 }
 
+                if (order.LineItems.Count == expeditedItems.Count) // All line items qualify to be expedited
+                {
+                    order.ShippingMethod = "FX2D";
+                } else if (expeditedItems.Count > 0) // Some line items qualify to be expedited
+                {
+                    // Remove qualifying items
+                    indicesToDelete.ForEach(index =>
+                    {
+                        order.LineItems.RemoveAt(index);
+                    });
+
+                    expeditedOrder = order.DeepClone();
+                    expeditedOrder.LineItems = expeditedItems;
+                }
+
                 log.LogInformation($"Inserting {order.PickTicketNumber} for {order.OrderNumber} into the database");
-                InsertOrder(order);
+                PickTicket.InsertPickTicket(order, _cs);
                 orderCsv.Append(GenerateOrderHeader(order));
 
                 foreach (DetailModel lineItem in order.LineItems)
@@ -259,11 +253,12 @@ namespace WsiApi.HTTP_Triggers
 
                 if (expeditedOrder != null)
                 {
+                    // Add suffix to order for uniqueness
                     expeditedOrder.PickTicketNumber += "-1";
                     expeditedOrder.ShippingMethod = "FX2D";
                     expeditedOrder.LineItems = expeditedItems;
                     log.LogInformation($"Inserting pick ticket {expeditedOrder.PickTicketNumber} for order {expeditedOrder.OrderNumber} into the database");
-                    InsertOrder(expeditedOrder);
+                    PickTicket.InsertPickTicket(expeditedOrder, _cs);
 
                     orderCsv.Append(GenerateOrderHeader(expeditedOrder));
 
@@ -278,78 +273,11 @@ namespace WsiApi.HTTP_Triggers
         }
 
         /// <summary>
-        /// Inserts a singular order into the database
-        /// </summary>
-        /// <param name="order">Order to be inserted</param>
-        private void InsertOrder(OrderModel order)
-        {
-            try
-            {
-                ValidateOrder(order);
-            }
-            catch (ValidationException)
-            {
-                throw;
-            }
-
-            try
-            {
-                int customerId = Addresses.InsertAddress(order.Customer, _cs);
-                int recipientId;
-
-                if (order.Customer.Equals(order.Recipient))
-                {
-                    recipientId = customerId;
-                }
-                else
-                {
-                    recipientId = Addresses.InsertAddress(order.Recipient, _cs);
-                }
-
-
-                HeaderModel header = new()
-                {
-                    PickticketNumber = order.PickTicketNumber ?? "C" + order.OrderNumber,
-                    OrderNumber = order.OrderNumber,
-                    Action = 'I',
-                    Store = order.Store,
-                    Customer = customerId,
-                    Recipient = recipientId,
-                    ShippingMethod = order.ShippingMethod,
-                    OrderDate = order.OrderDate,
-                    Channel = order.Channel
-                };
-
-                PtHeaders.InsertHeader(header, _cs);
-
-                int productCount = 0;
-                order.LineItems.ForEach(product =>
-                {
-                    productCount++;
-                    DetailModel detail = new()
-                    {
-                        PickticketNumber = header.PickticketNumber,
-                        Action = 'I',
-                        LineNumber = productCount,
-                        Sku = product.Sku,
-                        Units = product.Units,
-                        UnitsToShip = product.Units
-                    };
-                    PtDetails.InsertDetail(detail, _cs);
-                });
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-        }
-
-        /// <summary>
         /// Validates an order to ensure that all data annotations are
         /// met
         /// </summary>
         /// <param name="order">Order to be validated</param>
-        private static void ValidateOrder(OrderModel order)
+        private static void ValidateOrder(PickTicketModel order)
         {
             ValidationContext validationContext = new(order);
             Validator.ValidateObject(order, validationContext, true);
@@ -366,9 +294,9 @@ namespace WsiApi.HTTP_Triggers
         /// </summary>
         /// <param name="csv">CSV to parse</param>
         /// <returns>A key value of pair of order number to an OrderModel</returns>
-        private static Dictionary<string, OrderModel> ParseCsv(string csv)
+        private static Dictionary<string, PickTicketModel> ParseCsv(string csv)
         {
-            Dictionary<string, OrderModel> orders = new();
+            Dictionary<string, PickTicketModel> orders = new();
             string[] records = csv.Split("\n");
 
             foreach (string record in records)
@@ -385,7 +313,7 @@ namespace WsiApi.HTTP_Triggers
                     orders[pickticketNum].Channel = 1;
                 }
 
-                OrderModel order = orders[pickticketNum];
+                PickTicketModel order = orders[pickticketNum];
 
                 if (recordType == "PTH")
                 {
@@ -418,6 +346,7 @@ namespace WsiApi.HTTP_Triggers
                     {
                         Sku = fields[5],
                         Units = int.Parse(fields[10]),
+                        LineNumber = int.Parse(fields[3])
                     });
                 }
             }
@@ -425,61 +354,12 @@ namespace WsiApi.HTTP_Triggers
             return orders;
         }
 
-        private class OrderModel
-        {            
-            public string PickTicketNumber { get; set; }
-
-            [Required]
-            public string OrderNumber { get; set; }
-
-            [Required]
-            public char Action { get; set; }
-
-            [Required]
-            public int Store { get; set; }
-
-            [Required]
-            public AddressModel Customer { get; set; }
-
-            [Required]
-            public AddressModel Recipient { get; set; }
-
-            [Required]
-            public string ShippingMethod { get; set; }
-
-            [Required]
-            public List<DetailModel> LineItems { get; set; }
-
-            [Required]
-            public DateTime OrderDate { get; set; }
-
-            public int Channel { get; set; }
-
-            public DateTime CreatedAt { get; set; }
-
-            public DateTime UpdatedAt { get; set; }
-
-
-            /// <summary>
-            /// Creates a deep clone of the current <c>OrderModel</c> object with a blank list of <c>LineItems</c>
-            /// and a new <c>PickticketNumber</c> generated by <c>System.Guid</c>
-            /// </summary>
-            /// <returns></returns>
-            public OrderModel DeepClone()
-            {
-                OrderModel order = (OrderModel) MemberwiseClone();
-                order.LineItems = new();
-
-                return order;
-            }
-        }
-
         /// <summary>
         /// Generates a header CSV record in WSI's specified format with a new line terminator
         /// </summary>
         /// <param name="order">Order to generate the header for</param>
         /// <returns>CSV record with a new line terminator</returns>
-        private static string GenerateOrderHeader(OrderModel order)
+        private static string GenerateOrderHeader(PickTicketModel order)
         {
             StringBuilder headerCsv = new();
             headerCsv.Append($"PTH,I,{order.PickTicketNumber},{order.OrderNumber},C,");
