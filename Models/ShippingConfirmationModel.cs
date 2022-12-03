@@ -4,7 +4,7 @@ namespace WsiApi.Models
 {
     public class ShippingConfirmationModel
     {
-        public string PickticketNumber { get; set; }
+        public string PickTicketNumber { get; set; }
 
         public int LineNumber { get; set; }
 

@@ -4,7 +4,7 @@ namespace WsiApi.Models
 {
     public class DetailModel
     {
-        public string PickticketNumber { get; set; }
+        public string PickTicketNumber { get; set; }
         public int LineNumber { get; set; }
         public char Action { get; set; }
         public string Sku { get; set; }

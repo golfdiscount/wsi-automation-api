@@ -4,7 +4,7 @@ namespace WsiApi.Models
 {
     public class HeaderModel
     {
-        public string PickticketNumber { get; set; }
+        public string PickTicketNumber { get; set; }
         public string OrderNumber { get; set; }
         public char Action { get; set; }
         public int Store { get; set; }
