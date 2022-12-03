@@ -2,7 +2,7 @@
 
 namespace WsiApi.Models
 {
-    public class HeaderModel
+    public class PickTicketHeaderModel
     {
         public string PickTicketNumber { get; set; }
         public string OrderNumber { get; set; }

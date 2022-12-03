@@ -2,7 +2,7 @@
 
 namespace WsiApi.Models
 {
-    public class DetailModel
+    public class PickTicketDetailModel
     {
         public string PickTicketNumber { get; set; }
         public int LineNumber { get; set; }
