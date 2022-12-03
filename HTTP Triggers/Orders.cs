@@ -51,7 +51,7 @@ namespace WsiApi.HTTP_Triggers
             }
             if (orderNumber == null)
             {
-                return Get();
+                return Get(log);
             }
 
             return Get(orderNumber, log);
@@ -61,34 +61,13 @@ namespace WsiApi.HTTP_Triggers
         /// Processes a GET request and returns the most recently inserted orders
         /// </summary>
         /// <returns>HTTP Status result</returns>
-        private IActionResult Get()
+        private IActionResult Get(ILogger log)
         {
-            List<HeaderModel> headers = PtHeaders.GetHeader(_cs);
-            List<PickTicketModel> orders = new();
+            log.LogInformation("Searching for most recent orders");
+            List<PickTicketModel> pickTickets = PickTicket.GetPickTicket(_cs);
+            log.LogInformation($"Found {pickTickets.Count} pick tickets for 30 orders");
 
-            headers.ForEach(header =>
-            {
-                PickTicketModel order = new()
-                {
-                    PickTicketNumber = header.PickTicketNumber,
-                    OrderNumber = header.OrderNumber,
-                    Action = header.Action,
-                    Store = Data.Stores.GetStore(header.Store, _cs)[0].StoreNumber,
-                    Customer = Addresses.GetAddress(header.Customer, _cs),
-                    Recipient = Addresses.GetAddress(header.Recipient, _cs),
-                    ShippingMethod = Data.ShippingMethods.GetShippingMethods(header.ShippingMethod, _cs).Code,
-                    LineItems = PtDetails.GetDetails(header.PickTicketNumber, _cs),
-                    OrderDate = header.OrderDate,
-                    Channel = header.Channel,
-                    CreatedAt = header.CreatedAt,
-                    UpdatedAt = header.UpdatedAt
-                };
-
-                orders.Add(order);
-            });
-
-
-            return new OkObjectResult(orders);
+            return new OkObjectResult(pickTickets);
         }
 
         /// <summary>
@@ -100,15 +79,15 @@ namespace WsiApi.HTTP_Triggers
         private IActionResult Get(string orderNumber, ILogger log)
         {
             log.LogInformation($"Searching database for order {orderNumber}");
+            List<PickTicketModel> pickTickets = PickTicket.GetPickTicket(orderNumber, _cs);
+            log.LogInformation($"Found {pickTickets.Count} pick tickets for {orderNumber}");
 
-            PickTicketModel pickTicket = PickTicket.GetPickTicket(orderNumber, _cs);
-
-            if (pickTicket == null )
+            if (pickTickets.Count == 0)
             {
                 return new NotFoundResult();
             }
 
-            return new OkObjectResult(pickTicket);
+            return new OkObjectResult(pickTickets);
         }
 
         /// <summary>
