@@ -34,7 +34,7 @@ namespace WsiApi.Data
             {
                 DetailModel detail = new()
                 {
-                    PickticketNumber = reader.GetString(pickticketIdx),
+                    PickTicketNumber = reader.GetString(pickticketIdx),
                     LineNumber = reader.GetInt32(lineNumberIdx),
                     Action = reader.GetString(actionIdx)[0],
                     Sku = reader.GetString(skuIdx),
@@ -56,7 +56,7 @@ namespace WsiApi.Data
             conn.Open();
             using SqlCommand cmd = new(Insert, conn);
 
-            cmd.Parameters.AddWithValue("@pick_ticket_number", detail.PickticketNumber);
+            cmd.Parameters.AddWithValue("@pick_ticket_number", detail.PickTicketNumber);
             cmd.Parameters.AddWithValue("@line_number", detail.LineNumber);
             cmd.Parameters.AddWithValue("@sku", detail.Sku);
             cmd.Parameters.AddWithValue("@action", detail.Action);

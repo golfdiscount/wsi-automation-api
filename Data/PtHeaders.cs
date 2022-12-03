@@ -41,7 +41,7 @@ namespace WsiApi.Data
             {
                 HeaderModel header = new()
                 {
-                    PickticketNumber = reader.GetString(pickticketNumberIdx),
+                    PickTicketNumber = reader.GetString(pickticketNumberIdx),
                     OrderNumber = reader.GetString(orderNumberIdx),
                     Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
                     Store = reader.GetInt32(storeIdx),
@@ -91,7 +91,7 @@ namespace WsiApi.Data
 
             HeaderModel header = new()
             {
-                PickticketNumber = reader.GetString(pickticketNumberIdx),
+                PickTicketNumber = reader.GetString(pickticketNumberIdx),
                 OrderNumber = reader.GetString(orderNumberIdx),
                 Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
                 Store = reader.GetInt32(storeIdx),
@@ -113,7 +113,7 @@ namespace WsiApi.Data
             conn.Open();
             using SqlCommand cmd = new(Insert, conn);
 
-            cmd.Parameters.Add("@pick_ticket_number", System.Data.SqlDbType.VarChar).Value = header.PickticketNumber;
+            cmd.Parameters.Add("@pick_ticket_number", System.Data.SqlDbType.VarChar).Value = header.PickTicketNumber;
             cmd.Parameters.Add("@order_number", System.Data.SqlDbType.VarChar).Value = header.OrderNumber;
             cmd.Parameters.Add("@store", System.Data.SqlDbType.Int).Value = header.Store;
             cmd.Parameters.Add("@customer", System.Data.SqlDbType.Int).Value = header.Customer;
