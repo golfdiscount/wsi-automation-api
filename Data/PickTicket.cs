@@ -6,6 +6,11 @@ namespace WsiApi.Data
 {
     public static class PickTicket
     {
+        /// <summary>
+        /// Returns the 30 most recently inserted orders and all their associated pick tickets.
+        /// </summary>
+        /// <param name="connString">Connection string to SQL Server instance.</param>
+        /// <returns>List of pick tickets.</returns>
         public static List<PickTicketModel> GetPickTicket(string connString)
         {
             using SqlConnection conn = new(connString);
@@ -83,6 +88,12 @@ namespace WsiApi.Data
             return pickTickets;
         }
 
+        /// <summary>
+        /// Returns the pick tickets associated with a specific order.
+        /// </summary>
+        /// <param name="orderNumber">Order number to retrieve pick tickets for.</param>
+        /// <param name="connString">Connection string to SQL Server instance.</param>
+        /// <returns>List of pick tickets.</returns>
         public static List<PickTicketModel> GetPickTicket(string orderNumber, string connString)
         {
             using SqlConnection conn = new(connString);
@@ -130,6 +141,13 @@ namespace WsiApi.Data
             }
         }
 
+        /// <summary>
+        /// Inserts a pick ticket into the database. All operations around in this method are surrounded by a 
+        /// transaction which rollbacked if an exception is encountered, committed otherwise. If an exception is
+        /// encountered, it is re-thrown.
+        /// </summary>
+        /// <param name="pickTicket">Pick ticket to be inserted.</param>
+        /// <param name="connString">Connection string to SQL Server instance.</param>
         public static void InsertPickTicket(PickTicketModel pickTicket, string connString)
         {
             using SqlConnection conn = new(connString);
@@ -186,6 +204,12 @@ namespace WsiApi.Data
             }
         }
 
+        /// <summary>
+        /// Gets a list of headers for an order number.
+        /// </summary>
+        /// <param name="orderNumber">Order number to get headers for.</param>
+        /// <param name="conn">Currently open SQL Server connection.</param>
+        /// <returns>A list of headers.</returns>
         private static List<HeaderModel> GetHeader(string orderNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
@@ -236,6 +260,12 @@ namespace WsiApi.Data
             return headers;
         }
 
+        /// <summary>
+        /// Gets a singular address for an address ID.
+        /// </summary>
+        /// <param name="addressId">Address ID to search for.</param>
+        /// <param name="conn">Currently open SQL Server connection.</param>
+        /// <returns>A singular address.</returns>
         private static AddressModel GetAddress(int addressId, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
@@ -269,6 +299,12 @@ namespace WsiApi.Data
             return address;
         }
 
+        /// <summary>
+        /// Gets a list of details for a pick ticket number.
+        /// </summary>
+        /// <param name="pickTicketNumber">Pick ticket number to get details for.</param>
+        /// <param name="conn">Currently open SQL Server connection.</param>
+        /// <returns>List of details.</returns>
         private static List<DetailModel> GetDetail(string pickTicketNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
@@ -308,6 +344,12 @@ namespace WsiApi.Data
             return details;
         }
     
+        /// <summary>
+        /// Inserts a header into the databse.
+        /// </summary>
+        /// <param name="header">Header to be inserted.</param>
+        /// <param name="conn">Currently open SQL Server connection.</param>
+        /// <param name="transaction">Transaction for the current connection.</param>
         private static void InsertHeader(HeaderModel header, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = conn.CreateCommand();
@@ -327,6 +369,13 @@ namespace WsiApi.Data
             cmd.ExecuteScalar();
         }
     
+        /// <summary>
+        /// Inserts an address into the database.
+        /// </summary>
+        /// <param name="address">Address to be inserted</param>
+        /// <param name="conn">Currently open SQL Server connection.</param>
+        /// <param name="transaction">Transaction for the current connection.</param>
+        /// <returns></returns>
         private static int InsertAddress(AddressModel address, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = conn.CreateCommand();
@@ -348,6 +397,12 @@ namespace WsiApi.Data
             return insertId;
         }
     
+        /// <summary>
+        /// Inserts a detail into the database.
+        /// </summary>
+        /// <param name="detail">Detail to be inserted.</param>
+        /// <param name="conn">Currently open SQL Server connection.</param>
+        /// <param name="transaction">Transaction for the current connection.</param>
         private static void InsertDetail(DetailModel detail, SqlConnection conn, SqlTransaction transaction)
         {
             using SqlCommand cmd = conn.CreateCommand();
