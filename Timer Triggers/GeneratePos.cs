@@ -28,7 +28,7 @@ namespace WsiApi.Timer_Triggers
             _wsiSftp= wsiSftp;
         }
 
-        [FunctionName("GeneratePos")]
+        [FunctionName("GeneratePurchaseOrders")]
         public async Task Run([TimerTrigger("0 0 3 * * *")]TimerInfo myTimer, ILogger log)
         {
             HttpResponseMessage response = await duffersClient.GetAsync("media/WSI_PO.csv");
@@ -43,26 +43,27 @@ namespace WsiApi.Timer_Triggers
             string[] dailyPosRecords = dailyPos.Split('\n');
             dailyPosRecords = dailyPosRecords[1..];
 
+            Dictionary<string, PurchaseOrderModel> purchaseOrders = new();
+
             Dictionary<string, StringBuilder> poRecords = new();
 
-            foreach (string poRecord in masterPoRecords)
+            foreach (string poRecord in masterPoRecords) // Each poRecord is a purchase order detail item
             {
                 string[] poFields = poRecord.Split(',');
                 string poNumber = poFields[3];
                 
                 if (dailyPosRecords.Contains(poNumber))
                 {
-                    if (!poRecords.ContainsKey(poNumber))
+                    if (!purchaseOrders.ContainsKey(poNumber))
                     {
                         poRecords[poNumber] = new();
                         poRecords[poNumber].AppendLine($"ROH,I,P,{poNumber}{new string(',', 7)}PGD,HN{new string(',', 10)}");
 
-                        PoHeaderModel header = new()
+                        purchaseOrders[poNumber] = new()
                         {
-                            PoNumber = poNumber
+                            PoNumber = poNumber,
+                            LineItems = new()
                         };
-
-                        PoHeaders.InsertHeader(header, cs);
                     }
 
                     string[] recordFields = poRecord.Split(',');
@@ -75,17 +76,18 @@ namespace WsiApi.Timer_Triggers
                         Units = Convert.ToInt32(recordFields[10])
                     };
 
-                    PoDetails.InsertDetail(detail, cs);
+                    purchaseOrders[poNumber].LineItems.Add(detail);
 
-                    poRecords[poNumber].AppendLine(poRecord);
                 }
             }
 
-            foreach (string poNumber in poRecords.Keys)
+            foreach (string poNumber in purchaseOrders.Keys)
             {
+                PurchaseOrder.InsertPurchaseOrder(purchaseOrders[poNumber], cs);
+
                 Stream fileContents = new MemoryStream();
                 StreamWriter writer = new(fileContents);
-                writer.Write(poRecords[poNumber]);
+                writer.Write(GeneratePurchaseOrderCsv(purchaseOrders[poNumber]));
                 writer.Flush();
 
                 _wsiSftp.Queue($"Inbound/RO_{poNumber}.csv", fileContents);
@@ -93,6 +95,24 @@ namespace WsiApi.Timer_Triggers
 
             int uploadCount = _wsiSftp.UploadQueue();
             log.LogInformation($"Uploaded {uploadCount} POs to WSI");
+        }
+
+        private static string GeneratePurchaseOrderCsv(PurchaseOrderModel purchaseOrder)
+        {
+            StringBuilder poCsv = new();
+
+            poCsv.AppendLine($"ROH,I,P,{purchaseOrder.PoNumber}{new string(',', 7)}PGD,HN{new string(',', 10)}");
+
+            foreach (PurchaseOrderDetailModel lineItem in purchaseOrder.LineItems)
+            {
+                poCsv.Append($"ROD,I,P,");
+                poCsv.Append($"{purchaseOrder.PoNumber},{lineItem.LineNumber},{lineItem.Sku}");
+                poCsv.Append($"{new string(',', 5)}{lineItem.Units}{new string(',', 3)}EA");
+                poCsv.Append($"{new string(',', 7)}PGD,HN{new string(',', 5)}");
+                poCsv.AppendLine();
+            }
+
+            return poCsv.ToString();
         }
     }
 }
