@@ -67,7 +67,7 @@ namespace WsiApi.Timer_Triggers
 
                     string[] recordFields = poRecord.Split(',');
 
-                    PoDetailModel detail = new()
+                    PurchaseOrderDetailModel detail = new()
                     {
                         PoNumber = poNumber,
                         LineNumber = Convert.ToInt32(recordFields[4]),

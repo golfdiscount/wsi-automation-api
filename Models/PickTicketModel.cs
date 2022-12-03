@@ -27,7 +27,7 @@ namespace WsiApi.Models
         public string ShippingMethod { get; set; }
 
         [Required]
-        public List<DetailModel> LineItems { get; set; }
+        public List<PickTicketDetailModel> LineItems { get; set; }
 
         [Required]
         public DateTime OrderDate { get; set; }

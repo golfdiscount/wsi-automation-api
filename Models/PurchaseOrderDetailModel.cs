@@ -2,7 +2,7 @@
 
 namespace WsiApi.Models
 {
-    public class PoDetailModel
+    public class PurchaseOrderDetailModel
     {
         public string PoNumber { get; set; }
 
