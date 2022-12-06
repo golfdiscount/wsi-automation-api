@@ -231,11 +231,6 @@ namespace WsiApi.Data
             int createdIdx = reader.GetOrdinal("created_at");
             int updatedIdx = reader.GetOrdinal("updated_at");
 
-            if (!reader.HasRows)
-            {
-                return null;
-            }
-
             List<PickTicketHeaderModel> headers = new();
 
             while(reader.Read())
