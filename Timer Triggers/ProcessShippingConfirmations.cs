@@ -1,18 +1,17 @@
 using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
-using Renci.SshNet;
 using Renci.SshNet.Sftp;
 using SendGrid.Helpers.Mail;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using WsiApi.Models.SendGrid;
+using WsiApi.Services;
 
 namespace WsiApi.Blob_Triggers
 {
@@ -20,7 +19,7 @@ namespace WsiApi.Blob_Triggers
     {
         private readonly HttpClient shipstation;
         private readonly QueueServiceClient queueServiceClient;
-        private readonly SftpClient wsiSftp;
+        private readonly SftpService wsiSftp;
         private readonly JsonSerializerOptions jsonOptions;
 
         private readonly List<string> recipients = new()
@@ -35,12 +34,12 @@ namespace WsiApi.Blob_Triggers
         public ProcessShippingConfirmations(IHttpClientFactory clientFactory, 
             JsonSerializerOptions jsonOptions,
             QueueServiceClient queueServiceClient,
-            SftpClient sftpClient)
+            SftpService wsiSftp)
         {
             shipstation = clientFactory.CreateClient("shipstation");
             this.jsonOptions = jsonOptions;
             this.queueServiceClient = queueServiceClient;
-            wsiSftp = sftpClient;
+            this.wsiSftp = wsiSftp;
         }
 
         [FunctionName("ProcessShippingConfirmations")]
@@ -129,15 +128,13 @@ namespace WsiApi.Blob_Triggers
         {
             StringBuilder csv = new();
 
-            wsiSftp.Connect();
-            List<SftpFile> dirFiles = new(wsiSftp.ListDirectory("Outbound"));
+            List<SftpFile> dirFiles = wsiSftp.ListDirectory("Outbound");
 
             DateTime now = DateTime.Now;
             Regex fileMask = new($"SC_[0-9]+_[0-9]+_{now:MMddyyyy}.+csv");
 
             List<SftpFile> shippingConfirmations = dirFiles.FindAll(file =>
             {
-
                 return fileMask.IsMatch(file.Name);
             });
 
@@ -150,8 +147,6 @@ namespace WsiApi.Blob_Triggers
                     csv.AppendLine(lines[i]);
                 }
             }
-
-            wsiSftp.Disconnect();
 
             return csv.ToString();
         }
