@@ -1,4 +1,5 @@
 ﻿using Renci.SshNet;
+using Renci.SshNet.Sftp;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,6 +15,32 @@ namespace WsiApi.Services
         {
             sftp = new(host, user, pass);    
             sftpQueue= new Queue<Tuple<Stream, string>>();
+        }
+
+        /// <summary>
+        /// Lists out the contents of the directory specified at the path
+        /// </summary>
+        /// <param name="path">Path to directory to list files from</param>
+        /// <returns>List of SftpFile files in the directory</returns>
+        public List<SftpFile> ListDirectory(string path)
+        {
+            Open();
+            List<SftpFile> files = new(sftp.ListDirectory(path));
+            sftp.Disconnect();
+            return files;
+        }
+
+        /// <summary>
+        /// Reads all the lines for a file at the given full path
+        /// </summary>
+        /// <param name="path">Full path of a file</param>
+        /// <returns>Lines in a file as strings</returns>
+        public string[] ReadAllLines(string path)
+        {
+            Open();
+            string[] contents = sftp.ReadAllLines(path);
+            sftp.Disconnect();
+            return contents;
         }
 
         /// <summary>
