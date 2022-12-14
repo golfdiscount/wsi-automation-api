@@ -29,7 +29,7 @@ namespace WsiApi.Timer_Triggers
         }
 
         [FunctionName("GeneratePurchaseOrders")]
-        public async Task Run([TimerTrigger("0 0 3 * * *")]TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("0 0 5 * * *")]TimerInfo myTimer, ILogger log)
         {
             HttpResponseMessage response = await duffersClient.GetAsync("media/WSI_PO.csv");
             string masterPos = await response.Content.ReadAsStringAsync();
