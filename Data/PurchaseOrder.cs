@@ -1,12 +1,16 @@
 ﻿using Microsoft.Data.SqlClient;
-using System.Collections.Generic;
-using System.Reflection.PortableExecutable;
 using WsiApi.Models.PurchaseOrder;
 
 namespace WsiApi.Data
 {
     public static class PurchaseOrder
     {
+        /// <summary>
+        /// Retrieves a purchase order from the database
+        /// </summary>
+        /// <param name="purchaseOrderNumber">Number of the purchase order</param>
+        /// <param name="connString">Connection string to database</param>
+        /// <returns>Purchase order information with line items</returns>
         public static PurchaseOrderModel GetPurchaseOrder(string purchaseOrderNumber, string connString)
         {
             using SqlConnection conn = new(connString);
@@ -73,6 +77,11 @@ namespace WsiApi.Data
             return purchaseOrder;
         }
 
+        /// <summary>
+        /// Inserts a purchase order into the database
+        /// </summary>
+        /// <param name="purchaseOrder">Purchase order and line items to be inserted</param>
+        /// <param name="connString">Connection string to database</param>
         public static void InsertPurchaseOrder(PurchaseOrderModel purchaseOrder, string connString)
         {
             using SqlConnection conn = new(connString);
@@ -81,23 +90,11 @@ namespace WsiApi.Data
 
             try
             {
-                using SqlCommand cmd = conn.CreateCommand();
-                cmd.Transaction = transaction;
-                cmd.CommandText = "INSERT INTO [po_header] (po_number) VALUES (@po_number);";
-                cmd.Parameters.AddWithValue("@po_number", purchaseOrder.PoNumber);
-
-                cmd.ExecuteScalar();
-
-                cmd.CommandText = @"INSERT INTO [po_detail] (po_number, line_number, sku, units)
-                    VALUES (@po_number, @line_number, @sku, @units);";
+                InsertPurchaseOrderHeader(purchaseOrder, conn, transaction);   
 
                 foreach (PurchaseOrderDetailModel detail in purchaseOrder.LineItems)
                 {
-                    cmd.Parameters.AddWithValue("@line_number", detail.LineNumber);
-                    cmd.Parameters.AddWithValue("@sku", detail.Sku);
-                    cmd.Parameters.AddWithValue("@units", detail.Units);
-
-                    cmd.ExecuteScalar();
+                    InsertPurchaseOrderDetail(detail, conn, transaction);
                 }
 
                 transaction.Commit();
@@ -111,6 +108,67 @@ namespace WsiApi.Data
                 conn.Close();
             }
             
+        }
+
+        /// <summary>
+        /// Inserts purchase order header information into the database
+        /// </summary>
+        /// <param name="purchaseOrder">Purchase order to be inserted</param>
+        /// <param name="conn">Open SqlConnection to database</param>
+        /// <param name="transaction">Transaction associated with the current connection</param>
+        private static void InsertPurchaseOrderHeader(PurchaseOrderModel purchaseOrder, SqlConnection conn, SqlTransaction transaction)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = @"IF NOT EXISTS (SELECT * 
+                        FROM po_header 
+                        WHERE po_header.po_number = @po_number)
+                    BEGIN
+                        INSERT INTO po_header (po_number)
+                        VALUES (@po_number);
+                    END
+                    ELSE
+                    BEGIN
+                        UPDATE po_header
+                        SET updated_at = CURRENT_TIMESTAMP
+                        WHERE po_number = '@po_number';
+                    END";
+            cmd.Parameters.AddWithValue("@po_number", purchaseOrder.PoNumber);
+            cmd.ExecuteScalar();
+        }
+
+        /// <summary>
+        /// Inserts a purchase order line item into the database
+        /// </summary>
+        /// <param name="purchaseOrderDetail">Purchase order detail item to be inserted</param>
+        /// <param name="conn">Open SqlConnection to database</param>
+        /// <param name="transaction">Transaction associated with the current connection</param>
+        private static void InsertPurchaseOrderDetail(PurchaseOrderDetailModel purchaseOrderDetail, SqlConnection conn, SqlTransaction transaction)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = @"IF NOT EXISTS (SELECT * 
+	                    FROM po_detail 
+	                    WHERE po_detail.po_number = @po_number 
+	                    AND po_detail.line_number = @line_number)
+                    BEGIN
+	                    INSERT INTO po_detail (po_number, line_number, sku, units)
+	                    VALUES (@po_number, @line_number, @sku, @units);
+                    END
+                    ELSE
+                    BEGIN
+	                    UPDATE po_detail
+	                    SET updated_at = CURRENT_TIMESTAMP
+	                    WHERE po_detail.po_number = @po_number AND po_detail.line_number = @line_number;
+                    END"
+            ;
+
+            cmd.Parameters.AddWithValue("@po_number", purchaseOrderDetail.PoNumber);
+            cmd.Parameters.AddWithValue("@line_number", purchaseOrderDetail.LineNumber);
+            cmd.Parameters.AddWithValue("@sku", purchaseOrderDetail.Sku);
+            cmd.Parameters.AddWithValue("@units", purchaseOrderDetail.Units);
+
+            cmd.ExecuteScalar();
         }
     }
 }
