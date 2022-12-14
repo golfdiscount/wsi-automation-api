@@ -14,12 +14,12 @@ using WsiApi.Services;
 
 namespace WsiApi.Timer_Triggers
 {
-    public class GeneratePos
+    public class GeneratePurchaseOrders
     {
         private readonly HttpClient duffersClient;
         private readonly string cs;
         private readonly SftpService _wsiSftp;
-        public GeneratePos(IHttpClientFactory clientFactory, 
+        public GeneratePurchaseOrders(IHttpClientFactory clientFactory, 
             SqlConnectionStringBuilder builder,
             SftpService wsiSftp)
         {
