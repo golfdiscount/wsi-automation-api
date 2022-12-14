@@ -93,7 +93,6 @@ namespace WsiApi.Data
 
                 foreach (PurchaseOrderDetailModel detail in purchaseOrder.LineItems)
                 {
-                    cmd.Parameters.AddWithValue("@po_number", detail.PoNumber);
                     cmd.Parameters.AddWithValue("@line_number", detail.LineNumber);
                     cmd.Parameters.AddWithValue("@sku", detail.Sku);
                     cmd.Parameters.AddWithValue("@units", detail.Units);
