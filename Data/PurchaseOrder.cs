@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using System.Collections.Generic;
 using WsiApi.Models.PurchaseOrder;
 
 namespace WsiApi.Data
@@ -11,70 +12,94 @@ namespace WsiApi.Data
         /// <param name="purchaseOrderNumber">Number of the purchase order</param>
         /// <param name="connString">Connection string to database</param>
         /// <returns>Purchase order information with line items</returns>
-        public static PurchaseOrderModel GetPurchaseOrder(string purchaseOrderNumber, string connString)
+        public static List<PurchaseOrderModel> GetPurchaseOrder(string purchaseOrderNumber, string connString)
         {
             using SqlConnection conn = new(connString);
             conn.Open();
+            
+            List<PurchaseOrderModel> purchaseOrders = GetPurchaseOrderHeader(purchaseOrderNumber, conn);
 
-            using SqlCommand cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT * FROM [po_header] WHERE [po_header].[po_number] = @po_number;";
-            cmd.Parameters.AddWithValue("@po_number", purchaseOrderNumber);
-
-            using SqlDataReader headerReader = cmd.ExecuteReader();
-
-            if (!headerReader.HasRows)
+            if (purchaseOrders.Count == 0)
             {
                 return null;
             }
 
-            int poNumberIdx = headerReader.GetOrdinal("po_number");
-            int actionIdx = headerReader.GetOrdinal("action");
-            int createdAtIdx = headerReader.GetOrdinal("created_at");
-            int updatedAtIdx = headerReader.GetOrdinal("updated_at");
-
-            headerReader.Read();
-
-            PurchaseOrderModel purchaseOrder = new()
+            purchaseOrders.ForEach(purchaseOrder =>
             {
-                PoNumber = headerReader.GetString(poNumberIdx),
-                Action = headerReader.GetString(actionIdx)[0],
-                CreatedAt = headerReader.GetDateTime(createdAtIdx),
-                UpdatedAt = headerReader.GetDateTime(updatedAtIdx),
-                LineItems = new()
-            };
+                purchaseOrder.LineItems = GetPurchaseOrderDetail(purchaseOrderNumber, conn);
+            });
 
-            headerReader.Close();
+            return purchaseOrders;
+        }
 
-            cmd.CommandText = "SELECT * FROM [po_detail] WHERE [po_detail].[po_number] = @po_number;";
+        private static List<PurchaseOrderModel> GetPurchaseOrderHeader(string purchaseOrderNumber, SqlConnection conn)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT * FROM po_header WHERE po_number = @po_number;";
             cmd.Parameters.AddWithValue("@po_number", purchaseOrderNumber);
-            using SqlDataReader detailReader = cmd.ExecuteReader();
 
-            poNumberIdx = detailReader.GetOrdinal("po_number");
-            createdAtIdx = detailReader.GetOrdinal("created_at");
-            updatedAtIdx = detailReader.GetOrdinal("updated_at");
-            actionIdx = detailReader.GetOrdinal("action");
+            using SqlDataReader reader = cmd.ExecuteReader();
 
-            int lineNumberIdx = detailReader.GetOrdinal("line_number");
-            int skuIdx = detailReader.GetOrdinal("sku");
-            int unitsIdx = detailReader.GetOrdinal("units");
+            int purchaseOrderNumberIdx = reader.GetOrdinal("po_number");
+            int actionIdx = reader.GetOrdinal("action");
+            int createdAtIdx = reader.GetOrdinal("created_at");
+            int updatedAtIdx = reader.GetOrdinal("updated_at");
 
-            while (detailReader.Read())
+            List<PurchaseOrderModel> purchaseOrders = new();
+
+            while(reader.Read())
             {
-                purchaseOrder.LineItems.Add(new()
+                PurchaseOrderModel purchaseOrder = new()
                 {
-                    PoNumber = detailReader.GetString(poNumberIdx),
-                    Action = detailReader.GetString(actionIdx)[0],
-                    LineNumber = detailReader.GetInt32(lineNumberIdx),
-                    Sku = detailReader.GetString(skuIdx),
-                    Units = detailReader.GetInt32(unitsIdx),
-                    CreatedAt = detailReader.GetDateTime(createdAtIdx),
-                    UpdatedAt = detailReader.GetDateTime(updatedAtIdx)
-                });
+                    PoNumber = reader.GetString(purchaseOrderNumberIdx),
+                    Action = reader.GetString(actionIdx)[0],
+                    CreatedAt = reader.GetDateTime(createdAtIdx),
+                    UpdatedAt = reader.GetDateTime(updatedAtIdx),
+                    LineItems = new()
+                };
+
+                purchaseOrders.Add(purchaseOrder);
             }
 
-            detailReader.Close();
+            return purchaseOrders;
+        }
 
-            return purchaseOrder;
+        private static List<PurchaseOrderDetailModel> GetPurchaseOrderDetail(string purchaseOrderNumber, SqlConnection conn)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT * FROM po_detail WHERE po_number = @po_number ORDER BY line_number ASC;";
+            cmd.Parameters.AddWithValue("@po_number", purchaseOrderNumber);
+
+            using SqlDataReader reader = cmd.ExecuteReader();
+
+            int purchaseOrderNumberIdx = reader.GetOrdinal("po_number");
+            int lineNumberIdx = reader.GetOrdinal("line_number");
+            int actionIdx = reader.GetOrdinal("action");
+            int skuIdx = reader.GetOrdinal("sku");
+            int unitsIdx = reader.GetOrdinal("units");
+            int createdAtIdx = reader.GetOrdinal("created_at");
+            int updatedAtIdx = reader.GetOrdinal("updated_at");
+
+            List<PurchaseOrderDetailModel> details = new();
+
+            while(reader.Read())
+            {
+                PurchaseOrderDetailModel detail = new()
+                {
+                    PoNumber = reader.GetString(purchaseOrderNumberIdx),
+                    LineNumber = reader.GetInt32(lineNumberIdx),
+                    Action = reader.GetString(actionIdx)[0],
+                    Sku = reader.GetString(skuIdx),
+                    Units = reader.GetInt32(unitsIdx),
+                    CreatedAt = reader.GetDateTime(createdAtIdx),
+                    UpdatedAt = reader.GetDateTime(updatedAtIdx)
+                };
+
+                details.Add(detail);
+            }
+
+            return details;
+
         }
 
         /// <summary>
