@@ -18,7 +18,7 @@ namespace WsiApi.HTTP_Triggers
             cs = builder.ConnectionString;
         }
 
-        [FunctionName("Pos")]
+        [FunctionName("PurchaseOrders")]
         public IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "pos/{poNumber}")] HttpRequest req,
             string poNumber,
