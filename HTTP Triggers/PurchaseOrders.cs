@@ -29,10 +29,11 @@ namespace WsiApi.HTTP_Triggers
 
             if (poNumber == null) 
             {
-                return new OkResult();
+                List<PurchaseOrderModel> purchaseOrders = PurchaseOrder.GetPurchaseOrder(cs);
+                return new OkObjectResult(purchaseOrders);
             }
 
-            List<PurchaseOrderModel> purchaseOrder = PurchaseOrder.GetPurchaseOrder(poNumber, cs);
+            PurchaseOrderModel purchaseOrder = PurchaseOrder.GetPurchaseOrder(poNumber, cs);
 
             if (purchaseOrder == null)
             {
