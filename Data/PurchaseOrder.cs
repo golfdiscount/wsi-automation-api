@@ -106,8 +106,6 @@ namespace WsiApi.Data
             int createdAtIdx = reader.GetOrdinal("created_at");
             int updatedAtIdx = reader.GetOrdinal("updated_at");
 
-            PurchaseOrderModel purchaseOrders = new();
-
             if (!reader.HasRows)
             {
                 return null;
@@ -124,7 +122,7 @@ namespace WsiApi.Data
                 LineItems = new()
             };
 
-            return purchaseOrders;
+            return purchaseOrder;
         }
 
         /// <summary>
