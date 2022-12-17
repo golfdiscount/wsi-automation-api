@@ -37,6 +37,13 @@ namespace WsiApi.Timer_Triggers
             string[] masterPoRecords = masterPos.Split('\n');
             masterPoRecords = masterPoRecords[1..];
 
+            log.LogInformation($"Found {masterPoRecords.Length} POs to be uploaded");
+
+            if (masterPoRecords.Length == 0 )
+            {
+                return;
+            }
+
             response = await duffersClient.GetAsync("media/wsi_daily_po.csv");
             string dailyPos = await response.Content.ReadAsStringAsync();
             dailyPos = dailyPos.Trim().Replace("\"", "").Replace("\r", "");
@@ -54,6 +61,8 @@ namespace WsiApi.Timer_Triggers
                 
                 if (dailyPosRecords.Contains(poNumber))
                 {
+                    log.LogInformation($"Generating PO {poNumber}");
+
                     if (!purchaseOrders.ContainsKey(poNumber))
                     {
                         poRecords[poNumber] = new();
@@ -83,6 +92,7 @@ namespace WsiApi.Timer_Triggers
 
             foreach (string poNumber in purchaseOrders.Keys)
             {
+                log.LogInformation($"Inserting PO {poNumber} into the database");
                 PurchaseOrder.InsertPurchaseOrder(purchaseOrders[poNumber], cs);
 
                 Stream fileContents = new MemoryStream();
@@ -90,6 +100,7 @@ namespace WsiApi.Timer_Triggers
                 writer.Write(GeneratePurchaseOrderCsv(purchaseOrders[poNumber]));
                 writer.Flush();
 
+                log.LogInformation($"Queueing PO {poNumber} to be uploaded");
                 _wsiSftp.Queue($"Inbound/RO_{poNumber}.csv", fileContents);
             }
 
