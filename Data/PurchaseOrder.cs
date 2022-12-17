@@ -7,36 +7,38 @@ namespace WsiApi.Data
     public static class PurchaseOrder
     {
         /// <summary>
-        /// Retrieves a purchase order from the database
+        /// Returns the five most recently updated purchase orders
         /// </summary>
-        /// <param name="purchaseOrderNumber">Number of the purchase order</param>
-        /// <param name="connString">Connection string to database</param>
-        /// <returns>Purchase order information with line items</returns>
-        public static List<PurchaseOrderModel> GetPurchaseOrder(string purchaseOrderNumber, string connString)
+        /// <param name="connString">Connection string to the WSI database</param>
+        /// <returns>A list of recently updated purchase orders</returns>
+        public static List<PurchaseOrderModel> GetPurchaseOrder(string connString)
         {
             using SqlConnection conn = new(connString);
             conn.Open();
-            
-            List<PurchaseOrderModel> purchaseOrders = GetPurchaseOrderHeader(purchaseOrderNumber, conn);
 
-            if (purchaseOrders.Count == 0)
+            List<PurchaseOrderModel> purchaseOrders = GetPurchaseOrderHeader(conn);
+
+            foreach (PurchaseOrderModel purchaseOrder in purchaseOrders)
             {
-                return null;
+                purchaseOrder.LineItems = GetPurchaseOrderDetail(purchaseOrder.PoNumber, conn);
             }
-
-            purchaseOrders.ForEach(purchaseOrder =>
-            {
-                purchaseOrder.LineItems = GetPurchaseOrderDetail(purchaseOrderNumber, conn);
-            });
 
             return purchaseOrders;
         }
 
-        private static List<PurchaseOrderModel> GetPurchaseOrderHeader(string purchaseOrderNumber, SqlConnection conn)
+        /// <summary>
+        /// Retrieves the five most recently updated purchase order headers
+        /// </summary>
+        /// <param name="conn">Open SqlConnection to the WSI database</param>
+        /// <returns>A list of purchase orders with an emtpy list of line items</returns>
+        private static List<PurchaseOrderModel> GetPurchaseOrderHeader(SqlConnection conn)
         {
+            List<PurchaseOrderModel> purchaseOrders = new();
+
             using SqlCommand cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT * FROM po_header WHERE po_number = @po_number;";
-            cmd.Parameters.AddWithValue("@po_number", purchaseOrderNumber);
+            cmd.CommandText = @"SELECT TOP 5 * 
+                FROM po_header
+                ORDER BY updated_at DESC;";
 
             using SqlDataReader reader = cmd.ExecuteReader();
 
@@ -45,9 +47,7 @@ namespace WsiApi.Data
             int createdAtIdx = reader.GetOrdinal("created_at");
             int updatedAtIdx = reader.GetOrdinal("updated_at");
 
-            List<PurchaseOrderModel> purchaseOrders = new();
-
-            while(reader.Read())
+            while (reader.Read())
             {
                 PurchaseOrderModel purchaseOrder = new()
                 {
@@ -64,6 +64,75 @@ namespace WsiApi.Data
             return purchaseOrders;
         }
 
+        /// <summary>
+        /// Retrieves a purchase order from the database
+        /// </summary>
+        /// <param name="purchaseOrderNumber">Number of the purchase order</param>
+        /// <param name="connString">Connection string to database</param>
+        /// <returns>Purchase order information with line items</returns>
+        public static PurchaseOrderModel GetPurchaseOrder(string purchaseOrderNumber, string connString)
+        {
+            using SqlConnection conn = new(connString);
+            conn.Open();
+            
+            PurchaseOrderModel purchaseOrder = GetPurchaseOrderHeader(purchaseOrderNumber, conn);
+
+            if (purchaseOrder == null)
+            {
+                return null;
+            }
+
+            purchaseOrder.LineItems = GetPurchaseOrderDetail(purchaseOrderNumber, conn);
+
+            return purchaseOrder;
+        }
+
+        /// <summary>
+        /// Retrieves a singular purchase order header from the database
+        /// </summary>
+        /// <param name="purchaseOrderNumber">Purchase order to search for</param>
+        /// <param name="conn">Open SqlConnection to the WSI database</param>
+        /// <returns>A purchase order with an empty list of line items or null if a purchase order was not found</returns>
+        private static PurchaseOrderModel GetPurchaseOrderHeader(string purchaseOrderNumber, SqlConnection conn)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT * FROM po_header WHERE po_number = @po_number;";
+            cmd.Parameters.AddWithValue("@po_number", purchaseOrderNumber);
+
+            using SqlDataReader reader = cmd.ExecuteReader();
+
+            int purchaseOrderNumberIdx = reader.GetOrdinal("po_number");
+            int actionIdx = reader.GetOrdinal("action");
+            int createdAtIdx = reader.GetOrdinal("created_at");
+            int updatedAtIdx = reader.GetOrdinal("updated_at");
+
+            PurchaseOrderModel purchaseOrders = new();
+
+            if (!reader.HasRows)
+            {
+                return null;
+            }
+
+            reader.Read();
+
+            PurchaseOrderModel purchaseOrder = new()
+            {
+                PoNumber = reader.GetString(purchaseOrderNumberIdx),
+                Action = reader.GetString(actionIdx)[0],
+                CreatedAt = reader.GetDateTime(createdAtIdx),
+                UpdatedAt = reader.GetDateTime(updatedAtIdx),
+                LineItems = new()
+            };
+
+            return purchaseOrders;
+        }
+
+        /// <summary>
+        /// Retrives detail records (line items) for a purchase order from the database
+        /// </summary>
+        /// <param name="purchaseOrderNumber">Purchase order number to search for</param>
+        /// <param name="conn">Open SqlConnection to WSI database</param>
+        /// <returns>List of </returns>
         private static List<PurchaseOrderDetailModel> GetPurchaseOrderDetail(string purchaseOrderNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
