@@ -31,6 +31,7 @@ namespace WsiApi.Timer_Triggers
         [FunctionName("GeneratePurchaseOrders")]
         public async Task Run([TimerTrigger("0 0 17 * * *")]TimerInfo myTimer, ILogger log)
         {
+            log.LogDebug($"Connecting to {duffersClient.BaseAddress}/media/WSI_PO.csv");
             HttpResponseMessage response = await duffersClient.GetAsync("media/WSI_PO.csv");
             string masterPos = await response.Content.ReadAsStringAsync();
             masterPos = masterPos.Trim().Replace("\"", "").Replace("\r", "");
@@ -44,6 +45,7 @@ namespace WsiApi.Timer_Triggers
                 return;
             }
 
+            log.LogDebug($"Connecting to {duffersClient.BaseAddress}/media/wis_daily_po.csv");
             response = await duffersClient.GetAsync("media/wsi_daily_po.csv");
             string dailyPos = await response.Content.ReadAsStringAsync();
             dailyPos = dailyPos.Trim().Replace("\"", "").Replace("\r", "");
@@ -51,7 +53,6 @@ namespace WsiApi.Timer_Triggers
             dailyPosRecords = dailyPosRecords[1..];
 
             Dictionary<string, PurchaseOrderModel> purchaseOrders = new();
-
             Dictionary<string, StringBuilder> poRecords = new();
 
             foreach (string poRecord in masterPoRecords) // Each poRecord is a purchase order detail item
