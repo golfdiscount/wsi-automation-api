@@ -62,8 +62,6 @@ namespace WsiApi.Timer_Triggers
                 
                 if (dailyPosRecords.Contains(poNumber))
                 {
-                    log.LogInformation($"Generating PO {poNumber}");
-
                     if (!purchaseOrders.ContainsKey(poNumber))
                     {
                         poRecords[poNumber] = new();
