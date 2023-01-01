@@ -330,8 +330,8 @@ namespace WsiApi.Data
                     Sku = reader.GetString(skuIdx),
                     Units = reader.GetInt32(unitsIdx),
                     UnitsToShip = reader.GetInt32(unitsToShipIdx),
-                    Created_at = reader.GetDateTime(createdIdx),
-                    Updated_at = reader.GetDateTime(updatedIdx)
+                    CreatedAt = reader.GetDateTime(createdIdx),
+                    UpdatedAt = reader.GetDateTime(updatedIdx)
                 };
 
                 details.Add(detail);
