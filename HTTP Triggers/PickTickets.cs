@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -17,76 +18,77 @@ using WsiApi.Data;
 using WsiApi.Models;
 using WsiApi.Services;
 using WsiApi.Models.PickTicket;
+using System.Linq;
 
 namespace WsiApi.HTTP_Triggers
 {
-    public class Orders
+    public class PickTickets
     {
         private readonly string _cs;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly SftpService _wsiSftp;
         private readonly HttpClient _magento;
         private readonly HttpClient _duffers;
+        private readonly ILogger _logger;
 
-        public Orders(SqlConnectionStringBuilder builder,
+        public PickTickets(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
             SftpService wsiSftp,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            ILoggerFactory logFactory)
         {
             _cs = builder.ConnectionString;
             _jsonOptions = jsonOptions;
             _wsiSftp = wsiSftp;
             _magento = httpClientFactory.CreateClient("magento");
             _duffers = httpClientFactory.CreateClient("dufferscorner");
+            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("WsiApi.HTTP_Triggers.Orders"));
         }
 
-        [FunctionName("Orders")]
+        [FunctionName("PickTickets")]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "orders/{orderNumber?}")] HttpRequest req,
-            string? orderNumber,
-            ILogger log)
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "picktickets/{pickTicketNumber?}")] HttpRequest req,
+            string pickTicketNumber)
         {
             if (req.Method == "POST")
             {
-                return await Post(req, log);
-            }
-            if (orderNumber == null)
-            {
-                return Get(log);
+                return await Post(req, _logger);
             }
 
-            return Get(orderNumber, log);
+            return Get(pickTicketNumber, req.Query["orderNumber"]);
         }
 
-        /// <summary>
-        /// Processes a GET request and returns the most recently inserted orders
-        /// </summary>
-        /// <returns>HTTP Status result</returns>
-        private IActionResult Get(ILogger log)
+        private IActionResult Get(string pickTicketNumber, string orderNumber)
         {
-            log.LogInformation("Searching for most recent orders");
-            List<PickTicketModel> pickTickets = PickTicket.GetPickTicket(_cs);
-            log.LogInformation($"Found {pickTickets.Count} pick tickets for 30 orders");
-
-            return new OkObjectResult(pickTickets);
-        }
-
-        /// <summary>
-        /// Processes a GET request for a singular order
-        /// </summary>
-        /// <param name="orderNumber">Order number to search for in the database</param>
-        /// <param name="log">Logging object</param>
-        /// <returns></returns>
-        private IActionResult Get(string orderNumber, ILogger log)
-        {
-            log.LogInformation($"Searching database for order {orderNumber}");
-            List<PickTicketModel> pickTickets = PickTicket.GetPickTicket(orderNumber, _cs);
-            log.LogInformation($"Found {pickTickets.Count} pick tickets for {orderNumber}");
-
-            if (pickTickets.Count == 0)
+            List<PickTicketModel> pickTickets;
+            if (pickTicketNumber != null)
             {
-                return new NotFoundResult();
+                _logger.LogInformation($"Searching database for pick ticket {pickTicketNumber}");
+                PickTicketModel pickTicket = PickTicket.GetPickTicket(pickTicketNumber, _cs);
+
+                if (pickTicket == null)
+                {
+                    return new NotFoundResult();
+                }
+
+                return new OkObjectResult(pickTicket);
             }
+
+            if (orderNumber != null)
+            {
+                _logger.LogInformation($"Searching database for pick tickets for order {orderNumber}");
+                pickTickets = PickTicket.GetPickTicketByOrderNumber(orderNumber, _cs);
+
+                if (pickTickets == null)
+                {
+                    return new NotFoundResult();
+                }
+
+                return new OkObjectResult(pickTickets);
+            }
+
+            pickTickets = PickTicket.GetPickTicket(_cs);
+            _logger.LogInformation($"Found {pickTickets.Count} pick tickets for 30 orders");
 
             return new OkObjectResult(pickTickets);
         }
@@ -137,10 +139,10 @@ namespace WsiApi.HTTP_Triggers
 
                 string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
 
-                log.LogInformation($"Queuing {fileName} for SFTP");
+                _logger.LogInformation($"Queuing {fileName} for SFTP");
                 _wsiSftp.Queue($"Inbound/{fileName}", fileContents);
                 int fileUploadCount = _wsiSftp.UploadQueue();
-                log.LogInformation($"Uploaded {fileUploadCount} file(s) to WSI");
+                _logger.LogInformation($"Uploaded {fileUploadCount} file(s) to WSI");
 
                 return new StatusCodeResult(201);
             }

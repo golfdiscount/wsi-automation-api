@@ -90,12 +90,66 @@ namespace WsiApi.Data
         }
 
         /// <summary>
+        /// Retrieves pick ticket information for a pick ticket number. This can only ever
+        /// return one pick ticket as the pick ticket number is unique.
+        /// </summary>
+        /// <param name="pickTicketNumber">Pick ticket number to search for</param>
+        /// <param name="connString">Connection string to SQL Server instance</param>
+        /// <returns>Pick ticket information or <see langword="null"/> if it could not be found.</returns>
+        public static PickTicketModel GetPickTicket(string pickTicketNumber, string connString)
+        {
+            using SqlConnection conn = new(connString);
+            conn.Open();
+
+            try
+            {
+                PickTicketHeaderModel header = GetHeader(pickTicketNumber, conn);
+
+                if (header == null)
+                {
+                    return null;
+                }
+
+                List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
+
+                AddressModel customer = GetAddress(header.Customer, conn);
+                AddressModel recipient = GetAddress(header.Recipient, conn);
+
+                PickTicketModel pickTicket = new()
+                {
+                    PickTicketNumber = pickTicketNumber,
+                    OrderNumber = header.OrderNumber,
+                    Action = header.Action,
+                    Store = header.Store,
+                    Customer = customer,
+                    Recipient = recipient,
+                    ShippingMethod = header.ShippingMethod,
+                    LineItems = details,
+                    OrderDate = header.OrderDate,
+                    Channel = header.Channel,
+                    CreatedAt = header.CreatedAt,
+                    UpdatedAt = header.UpdatedAt,
+                };
+
+                return pickTicket;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        /// <summary>
         /// Returns the pick tickets associated with a specific order.
         /// </summary>
         /// <param name="orderNumber">Order number to retrieve pick tickets for.</param>
         /// <param name="connString">Connection string to SQL Server instance.</param>
         /// <returns>List of pick tickets.</returns>
-        public static List<PickTicketModel> GetPickTicket(string orderNumber, string connString)
+        public static List<PickTicketModel> GetPickTicketByOrderNumber(string orderNumber, string connString)
         {
             using SqlConnection conn = new(connString);
             conn.Open();
@@ -103,7 +157,7 @@ namespace WsiApi.Data
             try
             {
                 List<PickTicketModel> pickTickets = new();
-                List<PickTicketHeaderModel> headers = GetHeader(orderNumber, conn);
+                List<PickTicketHeaderModel> headers = GetHeaderByOrderNumber(orderNumber, conn);
 
                 foreach (PickTicketHeaderModel header in headers)
                 {
@@ -206,12 +260,63 @@ namespace WsiApi.Data
         }
 
         /// <summary>
+        /// Gets header details for a pick ticket. This can only ever return at most one header
+        /// as a pick ticket number is unique.
+        /// </summary>
+        /// <param name="pickTicketNumber">Pick ticket number to return header for</param>
+        /// <param name="conn"></param>
+        /// <returns></returns>
+        private static PickTicketHeaderModel GetHeader(string pickTicketNumber, SqlConnection conn)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT * FROM [pt_header] WHERE [pt_header].[pick_ticket_number] = @number;";
+            cmd.Parameters.AddWithValue("@number", pickTicketNumber);
+
+            using SqlDataReader reader = cmd.ExecuteReader();
+
+            int pickticketNumberIdx = reader.GetOrdinal("pick_ticket_number");
+            int orderNumberIdx = reader.GetOrdinal("order_number");
+            int actionIdx = reader.GetOrdinal("action");
+            int storeIdx = reader.GetOrdinal("store");
+            int customerIdx = reader.GetOrdinal("customer");
+            int recipientIdx = reader.GetOrdinal("recipient");
+            int shippingMethodIdx = reader.GetOrdinal("shipping_method");
+            int orderDateIdx = reader.GetOrdinal("order_date");
+            int channelIdx = reader.GetOrdinal("channel");
+            int createdIdx = reader.GetOrdinal("created_at");
+            int updatedIdx = reader.GetOrdinal("updated_at");
+
+            if (!reader.HasRows)
+            {
+                return null;
+            }
+
+            reader.Read();
+            PickTicketHeaderModel header = new()
+            {
+                PickTicketNumber = reader.GetString(pickticketNumberIdx),
+                OrderNumber = reader.GetString(orderNumberIdx),
+                Action = reader.GetString(actionIdx)[0], // Microsoft.Data.SqlClient.SqlDataReader.GetChar() is not supported
+                Store = reader.GetInt32(storeIdx),
+                Customer = reader.GetInt32(customerIdx),
+                Recipient = reader.GetInt32(recipientIdx),
+                ShippingMethod = reader.GetString(shippingMethodIdx),
+                OrderDate = reader.GetDateTime(orderDateIdx),
+                Channel = reader.GetInt32(channelIdx),
+                CreatedAt = reader.GetDateTime(createdIdx),
+                UpdatedAt = reader.GetDateTime(updatedIdx)
+            };
+
+            return header;
+        }
+
+        /// <summary>
         /// Gets a list of headers for an order number.
         /// </summary>
         /// <param name="orderNumber">Order number to get headers for.</param>
         /// <param name="conn">Currently open SQL Server connection.</param>
         /// <returns>A list of headers.</returns>
-        private static List<PickTicketHeaderModel> GetHeader(string orderNumber, SqlConnection conn)
+        private static List<PickTicketHeaderModel> GetHeaderByOrderNumber(string orderNumber, SqlConnection conn)
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT * FROM [pt_header] WHERE [pt_header].[order_number] = @number;";
