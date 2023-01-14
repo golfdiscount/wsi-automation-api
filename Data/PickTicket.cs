@@ -103,7 +103,6 @@ namespace WsiApi.Data
 
             try
             {
-                PickTicketModel pickTicket = new();
                 PickTicketHeaderModel header = GetHeader(pickTicketNumber, conn);
 
                 if (header == null)
@@ -116,7 +115,7 @@ namespace WsiApi.Data
                 AddressModel customer = GetAddress(header.Customer, conn);
                 AddressModel recipient = GetAddress(header.Recipient, conn);
 
-                PickTicketModel ticket = new()
+                PickTicketModel pickTicket = new()
                 {
                     PickTicketNumber = pickTicketNumber,
                     OrderNumber = header.OrderNumber,
