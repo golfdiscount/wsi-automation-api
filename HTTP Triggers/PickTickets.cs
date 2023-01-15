@@ -61,6 +61,7 @@ namespace WsiApi.HTTP_Triggers
         private IActionResult Get(string pickTicketNumber, string orderNumber)
         {
             List<PickTicketModel> pickTickets;
+
             if (pickTicketNumber != null)
             {
                 _logger.LogInformation($"Searching database for pick ticket {pickTicketNumber}");
@@ -79,7 +80,7 @@ namespace WsiApi.HTTP_Triggers
                 _logger.LogInformation($"Searching database for pick tickets for order {orderNumber}");
                 pickTickets = PickTicket.GetPickTicketByOrderNumber(orderNumber, _cs);
 
-                if (pickTickets == null)
+                if (pickTickets.Count == 0)
                 {
                     return new NotFoundResult();
                 }
