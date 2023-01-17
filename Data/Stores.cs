@@ -1,8 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using WsiApi.Models;
+using Pgd.Wsi.Models;
 
-namespace WsiApi.Data
+namespace Pgd.Wsi.Data
 {
     public static class Stores
     {

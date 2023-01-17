@@ -10,10 +10,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using WsiApi.Models.SendGrid;
-using WsiApi.Services;
+using Pgd.Wsi.Models.SendGrid;
+using Pgd.Wsi.Services;
 
-namespace WsiApi.Blob_Triggers
+namespace Pgd.Wsi.TimerTriggers
 {
     public class ProcessShippingConfirmations
     {

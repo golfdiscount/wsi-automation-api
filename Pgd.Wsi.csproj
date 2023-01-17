@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
-    <RootNamespace>WsiApi</RootNamespace>
+    <RootNamespace>Pgd.Wsi</RootNamespace>
     <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>

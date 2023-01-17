@@ -213,7 +213,7 @@ store information. if `id` is not specified, returns a listing of all stores.
 
 ### SendEmail
 Triggers for messages in the queue `send-email`. The messages should be in the format specified
-by `WsiApi.Models.SendGrid.SendGridMessageModel`.
+by `Pgd.Wsi.Models.SendGrid.SendGridMessageModel`.
 
 ## Timer Triggers
 

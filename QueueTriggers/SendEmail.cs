@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 using SendGrid.Helpers.Mail;
 using System.Text.Json;
 using System.Threading.Tasks;
-using WsiApi.Models.SendGrid;
+using Pgd.Wsi.Models.SendGrid;
 using SendGrid;
 
-namespace WsiApi.Queue_Triggers
+namespace Pgd.Wsi.QueueTriggers
 {
     public class SendEmail
     {

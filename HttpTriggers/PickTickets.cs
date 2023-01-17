@@ -14,13 +14,12 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web.Http;
-using WsiApi.Data;
-using WsiApi.Models;
-using WsiApi.Services;
-using WsiApi.Models.PickTicket;
-using System.Linq;
+using Pgd.Wsi.Data;
+using Pgd.Wsi.Models;
+using Pgd.Wsi.Services;
+using Pgd.Wsi.Models.PickTicket;
 
-namespace WsiApi.HTTP_Triggers
+namespace Pgd.Wsi.HttpTriggers
 {
     public class PickTickets
     {
@@ -42,7 +41,7 @@ namespace WsiApi.HTTP_Triggers
             _wsiSftp = wsiSftp;
             _magento = httpClientFactory.CreateClient("magento");
             _duffers = httpClientFactory.CreateClient("dufferscorner");
-            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("WsiApi.HTTP_Triggers.Orders"));
+            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("Pgd.Wsi.HttpTriggers.Orders"));
         }
 
         [FunctionName("PickTickets")]

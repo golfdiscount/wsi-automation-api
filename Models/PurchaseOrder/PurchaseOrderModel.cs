@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace WsiApi.Models.PurchaseOrder
+namespace Pgd.Wsi.Models.PurchaseOrder
 {
     public class PurchaseOrderModel
     {

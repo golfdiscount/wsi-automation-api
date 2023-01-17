@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using WsiApi.Data;
-using WsiApi.Models.PurchaseOrder;
+using Pgd.Wsi.Data;
+using Pgd.Wsi.Models.PurchaseOrder;
 
-namespace WsiApi.HTTP_Triggers
+namespace Pgd.Wsi.HttpTriggers
 {
     public class PurchaseOrders
     {
