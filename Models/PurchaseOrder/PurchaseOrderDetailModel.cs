@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WsiApi.Models.PurchaseOrder
+namespace Pgd.Wsi.Models.PurchaseOrder
 {
     public class PurchaseOrderDetailModel
     {

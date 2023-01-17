@@ -14,13 +14,12 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web.Http;
-using WsiApi.Data;
-using WsiApi.Models;
-using WsiApi.Services;
-using WsiApi.Models.PickTicket;
-using System.Linq;
+using Pgd.Wsi.Data;
+using Pgd.Wsi.Models;
+using Pgd.Wsi.Services;
+using Pgd.Wsi.Models.PickTicket;
 
-namespace WsiApi.HTTP_Triggers
+namespace Pgd.Wsi.HttpTriggers
 {
     public class PickTickets
     {
@@ -42,7 +41,7 @@ namespace WsiApi.HTTP_Triggers
             _wsiSftp = wsiSftp;
             _magento = httpClientFactory.CreateClient("magento");
             _duffers = httpClientFactory.CreateClient("dufferscorner");
-            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("WsiApi.HTTP_Triggers.Orders"));
+            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("Pgd.Wsi.HttpTriggers.Orders"));
         }
 
         [FunctionName("PickTickets")]
@@ -105,34 +104,60 @@ namespace WsiApi.HTTP_Triggers
             StreamReader reader = new(req.Body);
             string requestContents = reader.ReadToEnd().Trim();
 
-            try
-            {
-                string csv;
+            string csv;
 
-                if (req.ContentType == "application/json")
+            if (req.ContentType == "application/json")
+            {
+                PickTicketModel order = JsonSerializer.Deserialize<PickTicketModel>(requestContents, _jsonOptions);
+                order.Channel = 2; // TODO: Remove channel hardcoding
+                order.PickTicketNumber = "C" + order.OrderNumber;
+
+                try
                 {
-                    PickTicketModel order = JsonSerializer.Deserialize<PickTicketModel>(requestContents, _jsonOptions);
-                    order.Channel = 2; // TODO: Remove channel hardcoding
-                    order.PickTicketNumber = "C" + order.OrderNumber;
-                    PostJson(order, log);
+                    ValidateOrder(order);
+                    
+                    PickTicket.InsertPickTicket(order, _cs);
+                    log.LogInformation($"Inserted pick ticket {order.PickTicketNumber} for order {order.OrderNumber}");
 
                     csv = GenerateOrderHeader(order);
 
                     foreach (PickTicketDetailModel lineItem in order.LineItems)
                     {
                         csv += (await GenerateOrderDetail(order.PickTicketNumber, lineItem));
+                        log.LogInformation($"Inserted line ${lineItem.LineNumber} for pick ticket {lineItem.LineNumber}");
                     }
                 }
-                else if (req.ContentType == "text/csv")
+                catch (ValidationException ex)
                 {
-                    csv = await PostCsv(requestContents, log);
+                    log.LogWarning(ex.ValidationResult.ErrorMessage);
+                    return new BadRequestErrorMessageResult(ex.ValidationResult.ErrorMessage);
                 }
-                else
+                catch (SqlException ex)
                 {
-                    log.LogWarning("Incoming request did not have Content-Type header of application/json or text/csv");
-                    return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
+                    // SQL Server error code 2627 corresponds to a primary key violation
+                    if (ex.Number == 2627)
+                    {
+                        log.LogInformation($"Pick ticket {order.PickTicketNumber} already exists");
+                        return new BadRequestErrorMessageResult($"Pick ticket {order.PickTicketNumber} already exists");
+                    }
+
+                    log.LogError(ex.Message);
+                    return new InternalServerErrorResult();
                 }
 
+            }
+            else if (req.ContentType == "text/csv")
+            {
+                csv = await PostCsv(requestContents, log);
+            }
+            else
+            {
+                log.LogWarning("Incoming request did not have Content-Type header of application/json or text/csv");
+                return new BadRequestErrorMessageResult("Request header Content-Type is not either application/json or text/csv");
+            }
+
+            if (csv.Length > 0)
+            {
                 Stream fileContents = new MemoryStream();
                 StreamWriter writer = new(fileContents);
                 writer.Write(csv);
@@ -144,39 +169,23 @@ namespace WsiApi.HTTP_Triggers
                 _wsiSftp.Queue($"Inbound/{fileName}", fileContents);
                 int fileUploadCount = _wsiSftp.UploadQueue();
                 _logger.LogInformation($"Uploaded {fileUploadCount} file(s) to WSI");
+            }
 
-                return new StatusCodeResult(201);
-            }
-            catch (ValidationException e)
-            {
-                log.LogWarning(e.ValidationResult.ErrorMessage);
-                return new BadRequestErrorMessageResult(e.ValidationResult.ErrorMessage);
-            }
-            catch (FormatException e)
-            {
-                log.LogWarning(e.Message);
-                return new BadRequestErrorMessageResult("Formatting error. Ensure that dates are in format YYYY-MM-DD.");
-            }
-            catch (SqlException e)
-            {
-                if (e.Number == 2627) // e.Number refers to the SQL error code
-                {
-                    log.LogInformation("Order already exists");
-                    return new BadRequestErrorMessageResult("Order already exists");
-                }
-
-                log.LogError(e.Message);
-                return new InternalServerErrorResult();
-            }
+            return new StatusCodeResult(201);
         }
 
-        private void PostJson(PickTicketModel order, ILogger log)
-        {
-            log.LogInformation($"Inserting {order.OrderNumber} into the database");
-            ValidateOrder(order);
-            PickTicket.InsertPickTicket(order, _cs);
-        }
-
+        /// <summary>
+        /// Inserts orders in a CSV file into the database. If a pick ticket already exists, it is skipped.
+        /// If a pick ticket contains SKUs that can be expedited, then it is split into 2 separate pick tickets.
+        /// The output CSV may not always be the same as the input CSV due to this pick ticket splitting.
+        /// </summary>
+        /// <param name="csv">CSV file of orders.</param>
+        /// <param name="log">Logging middleware.</param>
+        /// <returns>CSV of inserted pick tickets.</returns>
+        /// <exception cref="SqlException">Any SQL Server error other than a primary key violation.</exception>
+        /// <expcetion cref="HttpRequestException">Occurs when method is unable to execute a 
+        /// network request to get CSV file containing SKUs qualifying for expedited
+        /// shipping from dufferscorner.</expcetion>
         private async Task<string> PostCsv(string csv, ILogger log)
         {
             // Get SKUs that qualify for free two day shipping
@@ -188,10 +197,11 @@ namespace WsiApi.HTTP_Triggers
             // Remove header
             records = records[1..];
 
-            HashSet<string> skus = new(records);
+            HashSet<string> expeditedSkus = new(records);
             Dictionary<string, PickTicketModel> orders = ParseCsv(csv);
             StringBuilder orderCsv = new();
 
+            // Split order and insert into database
             foreach (var orderKey in orders)
             {
                 PickTicketModel order = orderKey.Value;
@@ -199,21 +209,25 @@ namespace WsiApi.HTTP_Triggers
                 PickTicketModel expeditedOrder = null;
                 List<int> indicesToDelete = new();
 
+                // Determine which line items qualify for expedited shipping
                 for (int i = order.LineItems.Count - 1; i >= 0; i--)
                 {
                     PickTicketDetailModel lineItem = order.LineItems[i];
 
-                    if (skus.Contains(lineItem.Sku))
+                    if (expeditedSkus.Contains(lineItem.Sku))
                     {
                         expeditedItems.Add(lineItem);
                         indicesToDelete.Add(i);
                     }
                 }
 
-                if (order.LineItems.Count == expeditedItems.Count) // All line items qualify to be expedited
+                // All line items qualify to be expedited
+                if (order.LineItems.Count == expeditedItems.Count) 
                 {
                     order.ShippingMethod = "FX2D";
-                } else if (expeditedItems.Count > 0) // Some line items qualify to be expedited
+                }
+                // Only some line items qualify to be expedited
+                else if (expeditedItems.Count > 0) // Some line items qualify to be expedited
                 {
                     // Remove qualifying items
                     indicesToDelete.ForEach(index =>
@@ -225,29 +239,62 @@ namespace WsiApi.HTTP_Triggers
                     expeditedOrder.LineItems = expeditedItems;
                 }
 
-                log.LogInformation($"Inserting {order.PickTicketNumber} for {order.OrderNumber} into the database");
-                PickTicket.InsertPickTicket(order, _cs);
-                orderCsv.Append(GenerateOrderHeader(order));
-
-                foreach (PickTicketDetailModel lineItem in order.LineItems)
+                // Insert regular order into database
+                try
                 {
-                    orderCsv.Append(await GenerateOrderDetail(order.PickTicketNumber, lineItem));
+                    PickTicket.InsertPickTicket(order, _cs);
+                    log.LogInformation($"Inserted {order.PickTicketNumber} for {order.OrderNumber}");
+                    orderCsv.Append(GenerateOrderHeader(order));
+
+                    foreach (PickTicketDetailModel lineItem in order.LineItems)
+                    {
+                        orderCsv.Append(await GenerateOrderDetail(lineItem.PickTicketNumber, lineItem));
+                        log.LogInformation($"Inserted line {lineItem.LineNumber} for {lineItem.PickTicketNumber}");
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    // SQL Server error code 2627 corresponds to a primary key violation
+                    if (ex.Number == 2627)
+                    {
+                        log.LogWarning($"{order.PickTicketNumber} already exists in DB, skipping...");
+                    }
+                    else
+                    {
+                        throw;
+                    }
                 }
 
+                // Insert expedited order into database
                 if (expeditedOrder != null)
                 {
                     // Add suffix to order for uniqueness
                     expeditedOrder.PickTicketNumber += "-1";
                     expeditedOrder.ShippingMethod = "FX2D";
                     expeditedOrder.LineItems = expeditedItems;
-                    log.LogInformation($"Inserting pick ticket {expeditedOrder.PickTicketNumber} for order {expeditedOrder.OrderNumber} into the database");
-                    PickTicket.InsertPickTicket(expeditedOrder, _cs);
 
-                    orderCsv.Append(GenerateOrderHeader(expeditedOrder));
-
-                    foreach (PickTicketDetailModel lineItem in expeditedOrder.LineItems)
+                    try
                     {
-                        orderCsv.Append(await GenerateOrderDetail(expeditedOrder.PickTicketNumber, lineItem));
+                        PickTicket.InsertPickTicket(expeditedOrder, _cs);
+                        log.LogInformation($"Inserted pick ticket {expeditedOrder.PickTicketNumber} for order {expeditedOrder.OrderNumber} into the database");
+                        orderCsv.Append(GenerateOrderHeader(expeditedOrder));
+
+                        foreach (PickTicketDetailModel lineItem in expeditedOrder.LineItems)
+                        {
+                            orderCsv.Append(await GenerateOrderDetail(expeditedOrder.PickTicketNumber, lineItem));
+                            log.LogInformation($"Inserted line {lineItem.LineNumber} for {lineItem.PickTicketNumber}");
+                        }
+                    }
+                    catch (SqlException ex) {
+                        // SQL Server error code 2627 corresponds to a primary key violation
+                        if (ex.Number == 2627)
+                        {
+                            log.LogWarning($"{order.PickTicketNumber} already exists in DB, skipping...");
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
                 }
             }
@@ -273,10 +320,10 @@ namespace WsiApi.HTTP_Triggers
         }
 
         /// <summary>
-        /// Parses a CSV containg pickticket headers and details
+        /// Parses a CSV containing pickticket headers and details
         /// </summary>
         /// <param name="csv">CSV to parse</param>
-        /// <returns>A key value of pair of order number to an OrderModel</returns>
+        /// <returns>A key value of pair of pick ticket number to an OrderModel</returns>
         private static Dictionary<string, PickTicketModel> ParseCsv(string csv)
         {
             Dictionary<string, PickTicketModel> orders = new();

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WsiApi.Models.PickTicket
+namespace Pgd.Wsi.Models.PickTicket
 {
     public class PickTicketDetailModel
     {

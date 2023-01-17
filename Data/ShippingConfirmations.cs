@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WsiApi.Data
+namespace Pgd.Wsi.Data
 {
     internal class ShippingConfirmations
     {

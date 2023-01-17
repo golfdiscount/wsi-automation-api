@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace WsiApi.Services
+namespace Pgd.Wsi.Services
 {
     public class SftpService
     {

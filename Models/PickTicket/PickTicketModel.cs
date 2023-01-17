@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace WsiApi.Models.PickTicket
+namespace Pgd.Wsi.Models.PickTicket
 {
     public class PickTicketModel
     {

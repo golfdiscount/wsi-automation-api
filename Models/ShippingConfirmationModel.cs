@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WsiApi.Models
+namespace Pgd.Wsi.Models
 {
     public class ShippingConfirmationModel
     {

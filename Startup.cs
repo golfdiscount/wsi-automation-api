@@ -8,11 +8,11 @@ using SendGrid.Extensions.DependencyInjection;
 using System;
 using System.Text;
 using System.Text.Json;
-using WsiApi.Services;
+using Pgd.Wsi.Services;
 
-[assembly: FunctionsStartup(typeof(WsiApi.Startup))]
+[assembly: FunctionsStartup(typeof(Pgd.Wsi.Startup))]
 
-namespace WsiApi
+namespace Pgd.Wsi
 {
     public class Startup : FunctionsStartup
     {

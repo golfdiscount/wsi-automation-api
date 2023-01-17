@@ -4,9 +4,9 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using WsiApi.Services;
+using Pgd.Wsi.Services;
 
-namespace WsiApi.Timer_Triggers
+namespace Pgd.Wsi.TimerTriggers
 {
     public class GenerateWsiMasterSkuList
     {

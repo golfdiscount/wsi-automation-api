@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using WsiApi.Models;
+using Pgd.Wsi.Models;
 
-namespace WsiApi.HTTP_Triggers
+namespace Pgd.Wsi.HttpTriggers
 {
     public class ShippingMethods
     {

@@ -1,9 +1,9 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
-using WsiApi.Models;
-using WsiApi.Models.PickTicket;
+using Pgd.Wsi.Models;
+using Pgd.Wsi.Models.PickTicket;
 
-namespace WsiApi.Data
+namespace Pgd.Wsi.Data
 {
     public static class PickTicket
     {

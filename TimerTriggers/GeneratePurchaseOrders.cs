@@ -8,11 +8,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using WsiApi.Data;
-using WsiApi.Models.PurchaseOrder;
-using WsiApi.Services;
+using Pgd.Wsi.Data;
+using Pgd.Wsi.Models.PurchaseOrder;
+using Pgd.Wsi.Services;
 
-namespace WsiApi.Timer_Triggers
+namespace Pgd.Wsi.TimerTriggers
 {
     public class GeneratePurchaseOrders
     {
