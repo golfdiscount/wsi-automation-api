@@ -18,6 +18,7 @@ using Pgd.Wsi.Data;
 using Pgd.Wsi.Models;
 using Pgd.Wsi.Services;
 using Pgd.Wsi.Models.PickTicket;
+using Microsoft.Extensions.Primitives;
 
 namespace Pgd.Wsi.HttpTriggers
 {
@@ -54,43 +55,58 @@ namespace Pgd.Wsi.HttpTriggers
                 return await Post(req, _logger);
             }
 
-            return Get(pickTicketNumber, req.Query["orderNumber"]);
-        }
-
-        private IActionResult Get(string pickTicketNumber, string orderNumber)
-        {
-            List<PickTicketModel> pickTickets;
-
             if (pickTicketNumber != null)
             {
-                _logger.LogInformation($"Searching database for pick ticket {pickTicketNumber}");
-                PickTicketModel pickTicket = PickTicket.GetPickTicket(pickTicketNumber, _cs);
-
-                if (pickTicket == null)
-                {
-                    return new NotFoundResult();
-                }
-
-                return new OkObjectResult(pickTicket);
+                return GetByPickTicketNumber(pickTicketNumber);
             }
 
-            if (orderNumber != null)
+            if (req.Query["orderNumber"] != StringValues.Empty)
             {
-                _logger.LogInformation($"Searching database for pick tickets for order {orderNumber}");
-                pickTickets = PickTicket.GetPickTicketByOrderNumber(orderNumber, _cs);
-
-                if (pickTickets.Count == 0)
-                {
-                    return new NotFoundResult();
-                }
-
-                return new OkObjectResult(pickTickets);
+                return GetByOrderNumber(req.Query["orderNumber"]);
             }
 
-            pickTickets = PickTicket.GetPickTicket(_cs);
-            _logger.LogInformation($"Found {pickTickets.Count} pick tickets for 30 orders");
+            int page = (req.Query["page"] == StringValues.Empty) ? 1 : Convert.ToInt32(req.Query["page"]);
+            int pageSize = (req.Query["pageSize"] == StringValues.Empty) ? 30 : Convert.ToInt32(req.Query["pageSize"]);
+
+            return GetByPage(page, pageSize);
+        }
+
+        private IActionResult GetByPickTicketNumber(string pickTicketNumber)
+        {
+            _logger.LogInformation($"Searching database for pick ticket {pickTicketNumber}");
+            PickTicketModel pickTicket = PickTicket.GetPickTicket(pickTicketNumber, _cs);
+
+            if (pickTicket == null)
+            {
+                return new NotFoundResult();
+            }
+
+            return new OkObjectResult(pickTicket);
+        }
+
+        private IActionResult GetByOrderNumber(string orderNumber)
+        {
+            _logger.LogInformation($"Searching database for pick tickets for order {orderNumber}");
+            List<PickTicketModel> pickTickets = PickTicket.GetPickTicketByOrderNumber(orderNumber, _cs);
+
+            if (pickTickets.Count == 0)
+            {
+                return new NotFoundResult();
+            }
 
             return new OkObjectResult(pickTickets);
+        }
+
+        private IActionResult GetByPage(int page, int pageSize)
+        {
+            try
+            {
+                return new OkObjectResult(PickTicket.GetPickTicketByPage(page, pageSize, _cs));
+            }
+            catch (ArgumentException ex)
+            {
+                return new BadRequestObjectResult(ex.Message);
+            }
         }
 
         /// <summary>
