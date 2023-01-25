@@ -1,7 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
-using System.Collections.Generic;
 using Pgd.Wsi.Models;
 using Pgd.Wsi.Models.PickTicket;
+using System;
+using System.Collections.Generic;
 
 namespace Pgd.Wsi.Data
 {
@@ -12,15 +13,23 @@ namespace Pgd.Wsi.Data
         /// </summary>
         /// <param name="connString">Connection string to SQL Server instance.</param>
         /// <returns>List of pick tickets.</returns>
-        public static List<PickTicketModel> GetPickTicket(string connString)
+        public static PickTicketCollectionModel GetPickTicketByPage(int page, int pageSize, string connString)
         {
+            if (page < 1)
+            {
+                throw new ArgumentException("Page cannot be less than 1");
+            }
+
             using SqlConnection conn = new(connString);
             conn.Open();
 
             List<PickTicketModel> pickTickets = new();
+            int rowOffset = (page - 1) * pageSize;
 
             using SqlCommand cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT TOP 30 * FROM [pt_header] ORDER BY [created_at] DESC";
+            cmd.CommandText = "SELECT * FROM [pt_header] ORDER BY [created_at] DESC OFFSET @rowOffset ROWS FETCH NEXT @pageSize ROWS ONLY";
+            cmd.Parameters.AddWithValue("@rowOffset", rowOffset);
+            cmd.Parameters.AddWithValue("@pageSize", pageSize);
 
             using SqlDataReader reader = cmd.ExecuteReader();
 
@@ -86,7 +95,12 @@ namespace Pgd.Wsi.Data
                 pickTickets.Add(ticket);
             }
 
-            return pickTickets;
+            return new()
+            {
+                PickTickets = pickTickets,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         /// <summary>
