@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -5,6 +6,9 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
+using Pgd.Wsi.Data;
+using Pgd.Wsi.Models.PickTicket;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -14,11 +18,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Pgd.Wsi.Data;
-using Pgd.Wsi.Models;
-using Pgd.Wsi.Services;
-using Pgd.Wsi.Models.PickTicket;
-using Microsoft.Extensions.Primitives;
+using Azure.Storage.Queues;
 
 namespace Pgd.Wsi.HttpTriggers
 {
@@ -26,23 +26,23 @@ namespace Pgd.Wsi.HttpTriggers
     {
         private readonly string _cs;
         private readonly JsonSerializerOptions _jsonOptions;
-        private readonly SftpService _wsiSftp;
+        private readonly QueueClient _sftpQueue;
         private readonly HttpClient _magento;
         private readonly HttpClient _duffers;
         private readonly ILogger _logger;
 
         public PickTickets(SqlConnectionStringBuilder builder,
             JsonSerializerOptions jsonOptions,
-            SftpService wsiSftp,
+            QueueServiceClient queueServiceClient,
             IHttpClientFactory httpClientFactory,
             ILoggerFactory logFactory)
         {
             _cs = builder.ConnectionString;
             _jsonOptions = jsonOptions;
-            _wsiSftp = wsiSftp;
+            _sftpQueue = queueServiceClient.GetQueueClient("sftp-pt");
             _magento = httpClientFactory.CreateClient("magento");
             _duffers = httpClientFactory.CreateClient("dufferscorner");
-            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("Pgd.Wsi.HttpTriggers.Orders"));
+            _logger = logFactory.CreateLogger(LogCategories.CreateFunctionUserCategory("Pgd.Wsi.HttpTriggers.PickTickets"));
         }
 
         [FunctionName("PickTickets")]
@@ -82,7 +82,7 @@ namespace Pgd.Wsi.HttpTriggers
             }
 
             return new OkObjectResult(pickTicket);
-        }
+        } 
 
         private IActionResult GetByOrderNumber(string orderNumber)
         {
@@ -128,6 +128,7 @@ namespace Pgd.Wsi.HttpTriggers
             {
                 ValidateOrder(order);
                 List<PickTicketModel> pickTickets = await SplitPickTicket(order);
+                StringBuilder csv = new();
 
                 foreach (PickTicketModel pickTicket in pickTickets)
                 {
@@ -148,23 +149,8 @@ namespace Pgd.Wsi.HttpTriggers
                         log.LogError(ex.Message);
                         return new InternalServerErrorResult();
                     }
-                }
 
-                string csv = await GeneratePickTicketCsv(pickTickets);
-
-                if (csv.Length > 0)
-                {
-                    Stream fileContents = new MemoryStream();
-                    StreamWriter writer = new(fileContents);
-                    writer.Write(csv);
-                    writer.Flush();
-
-                    string fileName = $"PT_WSI_{DateTime.Now:MM_dd_yyyy_HH_mm_ss}.csv";
-
-                    _logger.LogInformation($"Queuing {fileName} for SFTP");
-                    _wsiSftp.Queue($"Inbound/{fileName}", fileContents);
-                    int fileUploadCount = _wsiSftp.UploadQueue();
-                    _logger.LogInformation($"Uploaded {fileUploadCount} file(s) to WSI");
+                    await _sftpQueue.SendMessageAsync(pickTicket.PickTicketNumber);
                 }
 
                 return new StatusCodeResult(201);
@@ -255,87 +241,6 @@ namespace Pgd.Wsi.HttpTriggers
 
             validationContext = new(order.Recipient);
             Validator.ValidateObject(order.Recipient, validationContext, true);
-        }
-
-        /// <summary>
-        /// Generates a singular CSV for a a collection of pick tickets
-        /// </summary>
-        /// <param name="pickTickets">Collection of pick tickets</param>
-        /// <returns>CSV containing pick ticket information</returns>
-        private async Task<string> GeneratePickTicketCsv(List<PickTicketModel> pickTickets)
-        {
-            StringBuilder csv = new();
-
-            foreach (PickTicketModel pickTicket in pickTickets)
-            {
-                GeneratePickTicketHeader(pickTicket, csv);
-
-                foreach (PickTicketDetailModel lineItem in pickTicket.LineItems)
-                {
-                    await GenerateOrderDetail(pickTicket.PickTicketNumber, lineItem, csv);
-                }
-            }
-
-            return csv.ToString();
-        }
-
-        /// <summary>
-        /// Generates a header CSV record in WSI's specified format with a new line terminator
-        /// </summary>
-        /// <param name="order">Order to generate the header for</param>
-        /// <returns>CSV record with a new line terminator</returns>
-        private static void GeneratePickTicketHeader(PickTicketModel order, StringBuilder csv)
-        {
-            csv.Append($"PTH,I,{order.PickTicketNumber},{order.OrderNumber},C,");
-            csv.Append($"{order.OrderDate.ToString("MM/dd/yyyy")},");
-            csv.Append(new string(',', 3));
-            csv.Append("75,");
-            csv.Append(new string(',', 2));
-
-            csv.Append($"\"{order.Customer.Name}\",");
-            csv.Append($"\"{order.Customer.Street}\",");
-            csv.Append($"\"{order.Customer.City}\",");
-            csv.Append($"{order.Customer.State},");
-            csv.Append($"{order.Customer.Country},");
-            csv.Append($"{order.Customer.Zip},,");
-
-            csv.Append($"\"{order.Recipient.Name}\",");
-            csv.Append($"\"{order.Recipient.Street}\",");
-            csv.Append($"\"{order.Recipient.City}\",");
-            csv.Append($"{order.Recipient.State},");
-            csv.Append($"{order.Recipient.Country},");
-            csv.Append($"{order.Recipient.Zip}{new string(',', 8)}");
-
-            csv.Append(order.ShippingMethod + new string(',', 3));
-            csv.Append("PGD,,HN,PGD,PP");
-            csv.Append(new string(',', 6));
-            csv.Append('Y' + new string(',', 4));
-            csv.Append("PT" + new string(',', 12));
-            csv.AppendLine();
-        }
-
-        /// <summary>
-        /// Generates a series of CSV detail records in WSI's specified format with a new line terminator
-        /// </summary>
-        /// <param name="order">Order to generate detail records for</param>
-        /// <returns>CSV records separated by new line terminators</returns>
-        private async Task GenerateOrderDetail(string pickTicketNumber, PickTicketDetailModel lineItem, StringBuilder csv)
-        {
-            csv.Append("PTD,I,");
-            csv.Append($"{pickTicketNumber},");
-            csv.Append($"{lineItem.LineNumber},A,");
-            csv.Append($"{lineItem.Sku}{new string(',', 5)}");
-            csv.Append($"{lineItem.Units},{lineItem.Units}{new string(',', 3)}");
-
-            HttpResponseMessage response = await _magento.GetAsync($"/api/products/{lineItem.Sku}");
-            response.EnsureSuccessStatusCode();
-            HttpContent content = response.Content;
-
-            MagentoProduct product = JsonSerializer.Deserialize<MagentoProduct>(await content.ReadAsStringAsync(), _jsonOptions);
-
-            csv.Append($"{product.Price}{new string(',', 3)}");
-            csv.Append($"HN,PGD{new string(',', 8)}");
-            csv.AppendLine();
         }
     }
 }
