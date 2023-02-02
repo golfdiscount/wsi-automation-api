@@ -118,7 +118,7 @@ namespace Pgd.Wsi.HttpTriggers
         private async Task<IActionResult> Post(HttpRequest req, ILogger log)
         {
             StreamReader reader = new(req.Body);
-            string requestContents = reader.ReadToEnd().Trim();
+            string requestContents = (await reader.ReadToEndAsync()).Trim();
 
             PickTicketModel order = JsonSerializer.Deserialize<PickTicketModel>(requestContents, _jsonOptions);
             order.Channel = 2; // TODO: Remove channel hardcoding
