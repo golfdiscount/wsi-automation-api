@@ -4,11 +4,11 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
+using Renci.SshNet;
 using SendGrid.Extensions.DependencyInjection;
 using System;
 using System.Text;
 using System.Text.Json;
-using Pgd.Wsi.Services;
 
 [assembly: FunctionsStartup(typeof(Pgd.Wsi.Startup))]
 
@@ -43,11 +43,11 @@ namespace Pgd.Wsi
             KeyVaultSecret wsiHost = secretClient.GetSecret("wsi-uri");
             KeyVaultSecret wsiUser = secretClient.GetSecret("wsi-user");
             KeyVaultSecret wsiPass = secretClient.GetSecret("wsi-pass");
-            SftpService wsiSftp = new(wsiHost.Value, wsiUser.Value, wsiPass.Value);
+            ConnectionInfo sftpConnection = new(wsiHost.Value, wsiUser.Value, new PasswordAuthenticationMethod(wsiUser.Value, wsiPass.Value));
 
             builder.Services.AddSingleton(jsonOptions);
             builder.Services.AddSingleton(connectionBuilder);
-            builder.Services.AddSingleton(wsiSftp);
+            builder.Services.AddSingleton(sftpConnection);
 
             builder.Services.AddHttpClient("magento", config =>
             {
