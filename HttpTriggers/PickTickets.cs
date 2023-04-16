@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -163,8 +164,16 @@ namespace Pgd.Wsi.HttpTriggers
         }
 
         /// <summary>
-        /// Splits a pick ticket into separate pick tickets if there are items that 
-        /// qualify for expedited shipping
+        /// Applies business rules and splits a pick ticket into multiple if necessary. Following
+        /// business rules are applied:
+        /// 
+        /// <list type="bullet">
+        ///     <item>Orders of 4 or less apparel items are shipped 2 day</item>
+        ///     <item>Orders of 4 or less items with all items qualifying for 2 day are shipped 2 day</item>
+        ///     <item>Orders of 5 or more items or orders that contain items not qualify for 2 day are split into
+        ///         separate orders
+        ///     </item>
+        /// </list>
         /// </summary>
         /// <param name="pickTicket">Pick ticket to be split</param>
         /// <returns>A list of split pick tickets</returns>
@@ -178,52 +187,51 @@ namespace Pgd.Wsi.HttpTriggers
             string[] records = csvContents.Trim().Replace("\"", string.Empty).Split("\r\n");
             // Remove header
             records = records[1..];
-
             HashSet<string> expeditedSkus = new(records);
-            List<PickTicketModel> pickTickets = new();
 
-            List<PickTicketDetailModel> expeditedItems = new();
-            PickTicketModel expeditedPickTicket = null;
-            List<int> indicesToDelete = new();
+            // Pick tickets generated after splitting process, may or may not contain new pick tickets
+            List<PickTicketModel> splitPickTickets = new();
+            // Mapping of pick tickets to the shipping method they qualify for
+            Dictionary<PickTicketDetailModel, string> lineItems = new();
 
-            // Determine which line items qualify for expedited shipping
-            for (int i = pickTicket.LineItems.Count - 1; i >= 0; i--)
+            pickTicket.LineItems.ForEach(lineItem =>
             {
-                PickTicketDetailModel lineItem = pickTicket.LineItems[i];
+                lineItems.Add(lineItem, pickTicket.ShippingMethod);
+            });
 
+            foreach (PickTicketDetailModel lineItem in lineItems.Keys)
+            {
+                // Item is a SKU that qualifies for free 2-day shipping
                 if (expeditedSkus.Contains(lineItem.Sku))
                 {
-                    expeditedItems.Add(lineItem);
-                    indicesToDelete.Add(i);
+                    lineItems[lineItem] = "FX2D";
+                } // Item is an apparel item and order line count is less than 4 qualifying it for free 2-day shipping
+                else if (lineItem.Sku.Length == 10 && lineItems.Count <= 4)
+                {
+                    lineItems[lineItem] = "FX2D";
                 }
             }
 
-            // All line items qualify to be expedited
-            if (pickTicket.LineItems.Count == expeditedItems.Count)
+            foreach (string shippingMethod in lineItems.Values.Distinct())
             {
-                pickTicket.ShippingMethod = "FX2D";
-            }
-            // Only some line items qualify to be expedited
-            else if (expeditedItems.Count > 0) // Some line items qualify to be expedited
-            {
-                // Remove qualifying items from original pick ticket
-                indicesToDelete.ForEach(index =>
+                PickTicketModel newPickTicket = pickTicket.DeepClone();
+                newPickTicket.ShippingMethod = shippingMethod;
+                newPickTicket.LineItems = lineItems.Where(kv => kv.Value == shippingMethod).Select(kv => kv.Key).ToList();
+
+                if (shippingMethod == "FX2D")
                 {
-                    pickTicket.LineItems.RemoveAt(index);
-                });
+                    newPickTicket.PickTicketNumber += "_WSIX";
+                }
 
-                expeditedPickTicket = pickTicket.DeepClone();
-                // Add suffix for uniqueness
-                expeditedPickTicket.PickTicketNumber += "_WSIX";
-                expeditedPickTicket.ShippingMethod = "FX2D";
-                expeditedPickTicket.LineItems = expeditedItems;
+                for (int i = 0; i < newPickTicket.LineItems.Count; i++)
+                {
+                    newPickTicket.LineItems[i].LineNumber = i + 1;
+                }
 
-                pickTickets.Add(expeditedPickTicket);
-            }
+                splitPickTickets.Add(newPickTicket);
+            };
 
-            pickTickets.Add(pickTicket);
-
-            return pickTickets;
+            return splitPickTickets;
         }
 
         /// <summary>
