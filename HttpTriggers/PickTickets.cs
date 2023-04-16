@@ -220,7 +220,7 @@ namespace Pgd.Wsi.HttpTriggers
 
                 // Shipping method is 2-day and there is more than 1 type of shipping method
                 // Avoid changing order number if all items are part of one order
-                if (shippingMethod == "FX2D" && lineItems.Values.Count > 1)
+                if (shippingMethod == "FX2D" && lineItems.Values.Distinct().Count() > 1)
                 {
                     newPickTicket.PickTicketNumber += "_WSIX";
                 }
