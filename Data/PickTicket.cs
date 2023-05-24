@@ -469,12 +469,24 @@ namespace Pgd.Wsi.Data
         {
             using SqlCommand cmd = conn.CreateCommand();
             cmd.Transaction = transaction;
+
+            cmd.CommandText = "SELECT id FROM store WHERE store_number = @store_number";
+            cmd.Parameters.Add("@store_number", System.Data.SqlDbType.Int).Value = header.Store;
+
+            int storeId;
+            using (SqlDataReader reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                storeId = reader.GetInt32(reader.GetOrdinal("id"));
+
+            }
+
             cmd.CommandText = @"INSERT INTO [pt_header] (pick_ticket_number, order_number, store, customer, recipient, shipping_method, order_date, channel)
             VALUES (@pick_ticket_number, @order_number, @store, @customer, @recipient, @shipping_method, @order_date, @channel);";
 
             cmd.Parameters.Add("@pick_ticket_number", System.Data.SqlDbType.VarChar).Value = header.PickTicketNumber;
             cmd.Parameters.Add("@order_number", System.Data.SqlDbType.VarChar).Value = header.OrderNumber;
-            cmd.Parameters.Add("@store", System.Data.SqlDbType.Int).Value = header.Store;
+            cmd.Parameters.Add("@store", System.Data.SqlDbType.Int).Value = storeId;
             cmd.Parameters.Add("@customer", System.Data.SqlDbType.Int).Value = header.Customer;
             cmd.Parameters.Add("@recipient", System.Data.SqlDbType.Int).Value = header.Recipient;
             cmd.Parameters.Add("@shipping_method", System.Data.SqlDbType.VarChar).Value = header.ShippingMethod;
