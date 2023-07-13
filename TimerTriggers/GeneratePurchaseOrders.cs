@@ -1,6 +1,9 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using Pgd.Wsi.Data;
+using Pgd.Wsi.Models.PurchaseOrder;
+using Renci.SshNet;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,9 +11,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Pgd.Wsi.Data;
-using Pgd.Wsi.Models.PurchaseOrder;
-using Pgd.Wsi.Services;
 
 namespace Pgd.Wsi.TimerTriggers
 {
@@ -18,14 +18,14 @@ namespace Pgd.Wsi.TimerTriggers
     {
         private readonly HttpClient duffersClient;
         private readonly string cs;
-        private readonly SftpService _wsiSftp;
+        private readonly SftpClient _wsiSftp;
         public GeneratePurchaseOrders(IHttpClientFactory clientFactory, 
             SqlConnectionStringBuilder builder,
-            SftpService wsiSftp)
+            ConnectionInfo sftpConnectionInfo)
         {
             duffersClient = clientFactory.CreateClient("dufferscorner");
             cs = builder.ConnectionString;
-            _wsiSftp= wsiSftp;
+            _wsiSftp = new(sftpConnectionInfo);
         }
 
         [FunctionName("GeneratePurchaseOrders")]
@@ -94,17 +94,27 @@ namespace Pgd.Wsi.TimerTriggers
                 log.LogInformation($"Inserting PO {poNumber} into the database");
                 PurchaseOrder.InsertPurchaseOrder(purchaseOrders[poNumber], cs);
 
-                Stream fileContents = new MemoryStream();
-                StreamWriter writer = new(fileContents);
-                writer.Write(GeneratePurchaseOrderCsv(purchaseOrders[poNumber]));
-                writer.Flush();
+                try
+                {
+                    _wsiSftp.Connect();
+                    log.LogInformation($"Uploading PO {poNumber}");
+                    Stream fileContents = new MemoryStream();
+                    StreamWriter writer = new(fileContents);
+                    writer.Write(GeneratePurchaseOrderCsv(purchaseOrders[poNumber]));
+                    writer.Flush();
+                    fileContents.Position = 0;
 
-                log.LogInformation($"Queueing PO {poNumber} to be uploaded");
-                _wsiSftp.Queue($"Inbound/RO_{poNumber}.csv", fileContents);
+                    _wsiSftp.UploadFile(fileContents, $"Inbound/RO_{poNumber}.csv");
+                }
+                catch
+                {
+                    throw;
+                }
+                finally
+                {
+                    _wsiSftp.Disconnect();
+                }
             }
-
-            int uploadCount = _wsiSftp.UploadQueue();
-            log.LogInformation($"Uploaded {uploadCount} POs to WSI");
         }
 
         private static string GeneratePurchaseOrderCsv(PurchaseOrderModel purchaseOrder)

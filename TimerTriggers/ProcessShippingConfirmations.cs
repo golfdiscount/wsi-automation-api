@@ -1,17 +1,18 @@
 using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+using Pgd.Wsi.Models.SendGrid;
+using Renci.SshNet;
 using Renci.SshNet.Sftp;
 using SendGrid.Helpers.Mail;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Pgd.Wsi.Models.SendGrid;
-using Pgd.Wsi.Services;
 
 namespace Pgd.Wsi.TimerTriggers
 {
@@ -19,7 +20,7 @@ namespace Pgd.Wsi.TimerTriggers
     {
         private readonly HttpClient shipstation;
         private readonly QueueServiceClient queueServiceClient;
-        private readonly SftpService wsiSftp;
+        private readonly SftpClient wsiSftp;
         private readonly JsonSerializerOptions jsonOptions;
 
         private readonly List<string> recipients = new()
@@ -34,12 +35,12 @@ namespace Pgd.Wsi.TimerTriggers
         public ProcessShippingConfirmations(IHttpClientFactory clientFactory, 
             JsonSerializerOptions jsonOptions,
             QueueServiceClient queueServiceClient,
-            SftpService wsiSftp)
+            ConnectionInfo sftpConnectionInfo)
         {
             shipstation = clientFactory.CreateClient("shipstation");
             this.jsonOptions = jsonOptions;
             this.queueServiceClient = queueServiceClient;
-            this.wsiSftp = wsiSftp;
+            this.wsiSftp = new(sftpConnectionInfo);
         }
 
         [FunctionName("ProcessShippingConfirmations")]
@@ -128,7 +129,9 @@ namespace Pgd.Wsi.TimerTriggers
         {
             StringBuilder csv = new();
 
-            List<SftpFile> dirFiles = wsiSftp.ListDirectory("Outbound");
+            wsiSftp.Connect();
+            List<SftpFile> dirFiles = wsiSftp.ListDirectory("Outbound").ToList();
+            wsiSftp.Disconnect();
 
             DateTime now = DateTime.Now;
             Regex fileMask = new($"SC_[0-9]+_[0-9]+_{now:MMddyyyy}.+csv");

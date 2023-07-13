@@ -1,5 +1,6 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+using Renci.SshNet;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -11,11 +12,11 @@ namespace Pgd.Wsi.TimerTriggers
     public class GenerateWsiMasterSkuList
     {
         private readonly HttpClient duffersClient;
-        private readonly SftpService _wsiSftp;
-        public GenerateWsiMasterSkuList(IHttpClientFactory clientFactory, SftpService wsiSftp)
+        private readonly SftpClient _wsiSftp;
+        public GenerateWsiMasterSkuList(IHttpClientFactory clientFactory, ConnectionInfo sftpConnectionInfo)
         {
             duffersClient = clientFactory.CreateClient("dufferscorner");
-            _wsiSftp= wsiSftp;
+            _wsiSftp = new(sftpConnectionInfo);
         }
 
         [FunctionName("GenerateWsiMasterSkuList")]
@@ -47,15 +48,28 @@ namespace Pgd.Wsi.TimerTriggers
                 skuCsv.Append(new string(',', 10));
                 skuCsv.AppendLine();
             }
-            Stream fileContents = new MemoryStream();
-            StreamWriter writer = new(fileContents);
-            writer.Write(skuCsv);
-            writer.Flush();
 
-            _wsiSftp.Queue("Inbound/SKU.csv", fileContents);
-            int uploadCount = _wsiSftp.UploadQueue();
+            try
+            {
+                _wsiSftp.Connect();
+                Stream fileContents = new MemoryStream();
+                StreamWriter writer = new(fileContents);
+                writer.Write(skuCsv);
+                writer.Flush();
+                fileContents.Position = 0;
 
-            log.LogInformation($"Uploaded {uploadCount} file(s) to WSI");
+                _wsiSftp.UploadFile(fileContents, "Inbound/SKU.csv");
+
+                log.LogInformation("Uploaded master SKU list to WSI");
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                _wsiSftp.Disconnect();
+            }
         }
     }
 }
