@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Pgd.Wsi.Models.ShippingConfirmation;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -33,6 +34,8 @@ namespace Pgd.Wsi.Models.PickTicket
         public DateTime OrderDate { get; set; }
 
         public int Channel { get; set; }
+
+        public ShippingConfirmationModel ShippingConfirmation { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
