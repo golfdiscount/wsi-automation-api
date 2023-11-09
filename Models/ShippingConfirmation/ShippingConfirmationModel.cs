@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 
-namespace Pgd.Wsi.Models
+namespace Pgd.Wsi.Models.ShippingConfirmation
 {
     public class ShippingConfirmationModel
     {
         public string PickTicketNumber { get; set; }
 
-        public int LineNumber { get; set; }
+        public List<ShippingConfirmationDetailModel> LineItems { get; set; }
 
         public DateTime ShipDate { get; set; }
 
