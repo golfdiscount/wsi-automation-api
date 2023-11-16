@@ -38,13 +38,13 @@ namespace Pgd.Wsi.TimerTriggers
             StringBuilder csv = new();
 
             wsiSftp.Connect();
-            List<SftpFile> dirFiles = wsiSftp.ListDirectory("Outbound").ToList();
+            List<ISftpFile> dirFiles = wsiSftp.ListDirectory("Outbound").ToList();
             wsiSftp.Disconnect();
 
             DateTime now = DateTime.Now;
             Regex fileMask = new($"SC_[0-9]+_[0-9]+_{now:MMddyyyy}.+csv");
 
-            List<SftpFile> shippingConfirmations = dirFiles.FindAll(file =>
+            List<ISftpFile> shippingConfirmations = dirFiles.FindAll(file =>
             {
                 return fileMask.IsMatch(file.Name);
             });
