@@ -1,4 +1,4 @@
-using Azure.Storage.Queues;
+/*using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Pgd.Wsi.Models.SendGrid;
@@ -181,7 +181,7 @@ namespace Pgd.Wsi.TimerTriggers
                 confirmationSummary.AppendLine($"{orderNumber},{sku},{trackingNumber}");
             }
         }
-
+*//*
         private async Task<string> MarkShipped(string orderNumber)
         {
             // This pattern checks to see if an order is an Amazon order
@@ -229,7 +229,7 @@ namespace Pgd.Wsi.TimerTriggers
 
             return orderNumberQuery;
         }
-
+*//*
         private class JsonBody
         {
             public int OrderId { get; set; }
@@ -256,3 +256,4 @@ namespace Pgd.Wsi.TimerTriggers
 
     }
 }
+*/

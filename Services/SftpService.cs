@@ -1,4 +1,4 @@
-﻿using Renci.SshNet;
+﻿/*using Renci.SshNet;
 using Renci.SshNet.Sftp;
 using System;
 using System.Collections.Generic;
@@ -106,3 +106,4 @@ namespace Pgd.Wsi.Services
         }
     }
 }
+*/

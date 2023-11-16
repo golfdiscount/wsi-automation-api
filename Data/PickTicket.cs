@@ -1,8 +1,10 @@
 ﻿using Microsoft.Data.SqlClient;
 using Pgd.Wsi.Models;
 using Pgd.Wsi.Models.PickTicket;
+using Pgd.Wsi.Models.ShippingConfirmation;
 using System;
 using System.Collections.Generic;
+
 
 namespace Pgd.Wsi.Data
 {
@@ -73,6 +75,8 @@ namespace Pgd.Wsi.Data
             {
                 List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
+                ShippingConfirmationModel confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+
                 AddressModel customer = GetAddress(header.Customer, conn);
                 AddressModel recipient = GetAddress(header.Recipient, conn);
 
@@ -86,6 +90,7 @@ namespace Pgd.Wsi.Data
                     Recipient = recipient,
                     ShippingMethod = header.ShippingMethod,
                     LineItems = details,
+                    ShippingConfirmation = confirmation,
                     OrderDate = header.OrderDate,
                     Channel = header.Channel,
                     CreatedAt = header.CreatedAt,
@@ -126,6 +131,8 @@ namespace Pgd.Wsi.Data
 
                 List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
+                ShippingConfirmationModel confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+
                 AddressModel customer = GetAddress(header.Customer, conn);
                 AddressModel recipient = GetAddress(header.Recipient, conn);
 
@@ -139,6 +146,7 @@ namespace Pgd.Wsi.Data
                     Recipient = recipient,
                     ShippingMethod = header.ShippingMethod,
                     LineItems = details,
+                    ShippingConfirmation = confirmation,
                     OrderDate = header.OrderDate,
                     Channel = header.Channel,
                     CreatedAt = header.CreatedAt,
@@ -177,6 +185,8 @@ namespace Pgd.Wsi.Data
                 {
                     List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
+                    ShippingConfirmationModel confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+
                     AddressModel customer = GetAddress(header.Customer, conn);
                     AddressModel recipient = GetAddress(header.Recipient, conn);
 
@@ -190,6 +200,7 @@ namespace Pgd.Wsi.Data
                         Recipient = recipient,
                         ShippingMethod = header.ShippingMethod,
                         LineItems = details,
+                        ShippingConfirmation = confirmation,
                         OrderDate = header.OrderDate,
                         Channel = header.Channel,
                         CreatedAt = header.CreatedAt,

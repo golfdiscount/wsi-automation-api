@@ -1,8 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
 using Pgd.Wsi.Models.PickTicket;
+using Pgd.Wsi.Models.ShippingConfirmation;
 using System;
 using System.Collections.Generic;
-using Pgd.Wsi.Models.ShippingConfirmation;
 
 namespace Pgd.Wsi.Data
 {

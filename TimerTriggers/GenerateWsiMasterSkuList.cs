@@ -5,7 +5,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Pgd.Wsi.Services;
+//using Pgd.Wsi.Services;
 
 namespace Pgd.Wsi.TimerTriggers
 {
