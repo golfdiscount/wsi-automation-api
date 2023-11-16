@@ -24,7 +24,7 @@ namespace Pgd.Wsi.Data
                 using SqlCommand cmd = conn.CreateCommand();
                 cmd.CommandText = @"SELECT * 
                     FROM shipping_confirmation
-                    WHERE [pt_detail].[pick_ticket_number] = @number
+                    WHERE [shipping_confirmation].[pick_ticket_number] = @number
                     ORDER BY created_at DESC";
                 cmd.Parameters.AddWithValue("@number", pickTicketNumber);
 
