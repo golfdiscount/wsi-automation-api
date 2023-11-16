@@ -75,7 +75,7 @@ namespace Pgd.Wsi.HttpTriggers
         private IActionResult GetByPickTicketNumber(string pickTicketNumber)
         {
             _logger.LogInformation($"Searching database for pick ticket {pickTicketNumber}");
-            PickTicketModel pickTicket = PickTicket.GetPickTicket(pickTicketNumber, _cs);
+                PickTicketModel pickTicket = PickTicket.GetPickTicket(pickTicketNumber, _cs);
 
             if (pickTicket == null)
             {
