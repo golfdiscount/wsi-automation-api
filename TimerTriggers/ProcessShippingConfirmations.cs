@@ -1,4 +1,4 @@
-/*using Azure.Storage.Queues;
+using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using Pgd.Wsi.Models.SendGrid;
@@ -181,79 +181,6 @@ namespace Pgd.Wsi.TimerTriggers
                 confirmationSummary.AppendLine($"{orderNumber},{sku},{trackingNumber}");
             }
         }
-*//*
-        private async Task<string> MarkShipped(string orderNumber)
-        {
-            // This pattern checks to see if an order is an Amazon order
-            Regex amazonPattern = new(@"\d+-\d+-\d+");
-            // Amazon orders don't have _WSI at the end
-            string orderNumberQuery = amazonPattern.IsMatch(orderNumber) ? orderNumber : $"{orderNumber}_WSI";
-
-            HttpResponseMessage response = await shipstation.GetAsync($"/orders?orderNumber={orderNumberQuery}");
-            response.EnsureSuccessStatusCode();
-
-            ShipstationOrderList orders = JsonSerializer.Deserialize<ShipstationOrderList>(response.Content.ReadAsStream(), jsonOptions);
-
-            if (orders.Total == 0)
-            {
-                throw new ArgumentException($"Query {orderNumberQuery} returned 0 results from ShipStation");
-            }
-
-            ShipstationOrder order = null;
-
-            foreach (ShipstationOrder shipstationOrder in orders.Orders)
-            {
-                if (shipstationOrder.OrderNumber == orderNumberQuery)
-                {
-                    order = shipstationOrder;
-                }
-            }
-
-            if (order == null)
-            {
-                throw new ArgumentException($"Unable to find an order that matches {orderNumberQuery}");
-            }
-
-            foreach (string trackingNumber in trackingNumbers[orderNumber])
-            {
-                JsonBody body = new()
-                {
-                    OrderId = order.OrderId,
-                    ShipDate = DateTime.Today.ToString("yyyy-MM-dd"),
-                    TrackingNumber = trackingNumber
-                };
-
-                HttpResponseMessage postResponse = await shipstation.PostAsJsonAsync("/orders/markasshipped", body);
-                postResponse.EnsureSuccessStatusCode();
-            }
-
-            return orderNumberQuery;
-        }
-*//*
-        private class JsonBody
-        {
-            public int OrderId { get; set; }
-            public string CarrierCode { get; set; } = "fedex";
-            public string ShipDate { get; set; }
-            public string TrackingNumber { get; set; }
-            public bool NotifyCustomer { get; set; } = true;
-            public bool NotifySalesChannel { get; set; } = true;
-        }
-    
-        private class ShipstationOrderList
-        {
-            public List<ShipstationOrder> Orders { get; set; }
-            public int Total { get; set; }
-            public int Page { get; set; }
-            public int Pages { get; set; }  
-        }
-
-        private class ShipstationOrder
-        {
-            public int OrderId { get; set; }
-            public string OrderNumber { get; set; }
-        }
 
     }
 }
-*/
