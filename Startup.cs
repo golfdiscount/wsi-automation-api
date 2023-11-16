@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Renci.SshNet;
 using SendGrid.Extensions.DependencyInjection;
 using System;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -30,9 +31,16 @@ namespace Pgd.Wsi
                 DataSource = host,
                 Pooling = true,
                 MinPoolSize = 3,
-                InitialCatalog = "wsi",
-                Authentication = SqlAuthenticationMethod.ActiveDirectoryDefault
+                InitialCatalog = "wsi"
             };
+
+            if (Debugger.IsAttached)
+            {
+                connectionBuilder.Authentication = SqlAuthenticationMethod.ActiveDirectoryInteractive;
+            } else
+            {
+                connectionBuilder.Authentication = SqlAuthenticationMethod.ActiveDirectoryDefault;
+            }
 
             JsonSerializerOptions jsonOptions = new()
             {
