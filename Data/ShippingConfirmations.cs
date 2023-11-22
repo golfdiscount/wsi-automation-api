@@ -1,8 +1,10 @@
 ﻿using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Azure;
 using Pgd.Wsi.Models.PickTicket;
 using Pgd.Wsi.Models.ShippingConfirmation;
 using System;
 using System.Collections.Generic;
+using System.Reflection.PortableExecutable;
 
 namespace Pgd.Wsi.Data
 {
@@ -82,6 +84,83 @@ namespace Pgd.Wsi.Data
                 conn.Close();
             }
             
+        }
+
+        /// <summary>
+        /// Inserts a shipping confirmation into the database. All operations around this method are surrounded by a transaction which rollbacked if an exception is encountered, commited otherwise. If an exception is encountered, it is re-thrown.
+        /// </summary>
+        /// <param name="shippingConfirmation">Shipping confirmation to be inserted</param>
+        /// <param name="connSting">Connection string to SQL Server instance</param>
+        public static void InsertShippingConfirmation(ShippingConfirmationModel shippingConfirmation, string connSting)
+        {
+            using SqlConnection conn = new(connSting);
+            using SqlTransaction transaction = conn.BeginTransaction();
+
+            try
+            {
+                ShippingConfirmationModel confirmation = new()
+                {
+                    PickTicketNumber = shippingConfirmation.PickTicketNumber,
+                    TrackingNumber = shippingConfirmation.TrackingNumber,
+                    CreatedAt = shippingConfirmation.CreatedAt,
+                    UpdatedAt = shippingConfirmation.UpdatedAt,
+                    ShipDate = shippingConfirmation.ShipDate,
+                    ShippingMethod = shippingConfirmation.ShippingMethod,
+                };
+
+                InsertConfrimation(confirmation, conn, transaction);
+
+                shippingConfirmation.LineItems.ForEach(line =>
+                {
+                    line.LineNumber = line.LineNumber;
+                    line.Sku = line.Sku;
+                    line.Units = line.Units;
+                    InsertLineItems(line, conn, transaction);
+                });
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+            finally
+            {
+                conn.Close();
+            }
+
+        }
+
+        private static void InsertConfrimation(ShippingConfirmationModel detail, SqlConnection conn, SqlTransaction transaction)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = @"INSERT INTO [shipping_confirmation] (pick_ticket_number, ship_date, tracking_number, shipping_method, created_at, updated_at)
+            VALUES (@pick_ticket_number, @ship_date, @tracking_number, @shipping_method, @created_at, @updated_at);";
+
+            cmd.Parameters.AddWithValue("@pick_ticket_number", detail.PickTicketNumber);
+            cmd.Parameters.AddWithValue("@ship_date", detail.ShipDate);
+            cmd.Parameters.AddWithValue("@tracking_number", detail.TrackingNumber);
+            cmd.Parameters.AddWithValue("@shipping_method", detail.ShippingMethod);
+            cmd.Parameters.AddWithValue("@created_at", detail.CreatedAt);
+            cmd.Parameters.AddWithValue("@updated_at", detail.UpdatedAt);
+
+            cmd.ExecuteScalar();
+        }
+
+        private static void InsertLineItems(ShippingConfirmationDetailModel item, SqlConnection conn, SqlTransaction transaction)
+        {
+            using SqlCommand cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = @"INSERT INTO [shipping_confirmation] (line_number, sku, units)
+            VALUES (@line_number, @sku, @quantity);";
+
+            cmd.Parameters.AddWithValue("@line_number", item.LineNumber);
+            cmd.Parameters.AddWithValue("@sku", item.Sku);
+            cmd.Parameters.AddWithValue("quantity", item.Units);
+
+            cmd.ExecuteScalar();
         }
 
     }
