@@ -102,6 +102,7 @@ namespace Pgd.Wsi.Data
                 {
                     PickTicketNumber = shippingConfirmation.PickTicketNumber,
                     TrackingNumber = shippingConfirmation.TrackingNumber,
+                    LineItems = shippingConfirmation.LineItems,
                     CreatedAt = shippingConfirmation.CreatedAt,
                     UpdatedAt = shippingConfirmation.UpdatedAt,
                     ShipDate = shippingConfirmation.ShipDate,
@@ -112,9 +113,6 @@ namespace Pgd.Wsi.Data
 
                 shippingConfirmation.LineItems.ForEach(line =>
                 {
-                    line.LineNumber = line.LineNumber;
-                    line.Sku = line.Sku;
-                    line.Units = line.Units;
                     InsertLineItems(line, conn, transaction);
                 });
 
