@@ -75,7 +75,16 @@ namespace Pgd.Wsi.Data
             {
                 List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
-                ShippingConfirmationModel confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+                ShippingConfirmationModel confirmation;
+
+                try
+                {
+                    confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+                }
+                catch (ArgumentException)
+                {
+                    confirmation = null;
+                }
 
                 AddressModel customer = GetAddress(header.Customer, conn);
                 AddressModel recipient = GetAddress(header.Recipient, conn);
@@ -131,7 +140,17 @@ namespace Pgd.Wsi.Data
 
                 List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
-                ShippingConfirmationModel confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+                ShippingConfirmationModel confirmation;
+
+                try
+                {
+                    confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+                }
+                catch (ArgumentException)
+                {
+                    confirmation = null;
+                }
+                
 
                 AddressModel customer = GetAddress(header.Customer, conn);
                 AddressModel recipient = GetAddress(header.Recipient, conn);
@@ -185,8 +204,17 @@ namespace Pgd.Wsi.Data
                 {
                     List<PickTicketDetailModel> details = GetDetail(header.PickTicketNumber, conn);
 
-                    ShippingConfirmationModel confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+                    ShippingConfirmationModel confirmation;
 
+                    try
+                    {
+                        confirmation = ShippingConfirmations.GetShippingConfirmation(header.PickTicketNumber, connString);
+                    }
+                    catch (ArgumentException)
+                    {
+                        confirmation = null;
+                    }
+                    
                     AddressModel customer = GetAddress(header.Customer, conn);
                     AddressModel recipient = GetAddress(header.Recipient, conn);
 
