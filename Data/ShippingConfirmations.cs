@@ -96,7 +96,6 @@ namespace Pgd.Wsi.Data
         /// </summary>
         /// <param name="shippingConfirmation">Shipping confirmation to be inserted</param>
         /// <param name="connectionString">Connection string to SQL Server instance</param>
-        /// <exception cref="Exception">All operations around this method are surrounded by a transaction which rollbacked if an exception is encountered, commited otherwise.</exception>
         public static void InsertShippingConfirmation(ShippingConfirmationModel shippingConfirmation, string connectionString)
         {
             using SqlConnection conn = new(connectionString);
@@ -127,7 +126,6 @@ namespace Pgd.Wsi.Data
             catch
             {
                 transaction.Rollback();
-                throw;
             }
             finally
             {
