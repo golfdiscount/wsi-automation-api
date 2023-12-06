@@ -11,11 +11,12 @@ namespace Pgd.Wsi.Data
     public static class ShippingConfirmations
     {
         /// <summary>
-        /// Retrieves recently updated shipping confirmations
+        /// Retrieves recently updated shipping confirmations.
         /// </summary>
-        /// <param name="conn">Open SqlConnection to the WSI database</param>
+        /// <param name="connectionString">Open SqlConnection to the WSI database</param>
+        /// <exception cref="ArgumentException">An exception is thrown in no pick ticket number is found.</exception>
         /// <returns>Shipping comfirmations with empty line items</returns>
-         public static ShippingConfirmationModel GetShippingConfirmation(string pickTicketNumber, string connectionString)
+        public static ShippingConfirmationModel GetShippingConfirmation(string pickTicketNumber, string connectionString)
         {
             using SqlConnection conn = new(connectionString);
 
@@ -39,6 +40,8 @@ namespace Pgd.Wsi.Data
 
                 int pickTicketNumberIdx = reader.GetOrdinal("pick_ticket_number");
                 int trackingNumber = reader.GetOrdinal("tracking_number");
+                int shipDate = reader.GetOrdinal("ship_date");
+                int shippingMethod = reader.GetOrdinal("shipping_method");
                 int createdAtIdx = reader.GetOrdinal("created_at");
                 int updatedAtIdx = reader.GetOrdinal("updated_at");
 
@@ -48,6 +51,8 @@ namespace Pgd.Wsi.Data
                 {
                     PickTicketNumber = reader.GetString(pickTicketNumberIdx),
                     LineItems = new(),
+                    ShipDate = reader.GetDateTime(shipDate),
+                    ShippingMethod = reader.GetString(shippingMethod),
                     TrackingNumber = reader.GetString(trackingNumber),
                     CreatedAt = reader.GetDateTime(createdAtIdx),
                     UpdatedAt = reader.GetDateTime(updatedAtIdx)
@@ -87,13 +92,14 @@ namespace Pgd.Wsi.Data
         }
 
         /// <summary>
-        /// Inserts a shipping confirmation into the database. All operations around this method are surrounded by a transaction which rollbacked if an exception is encountered, commited otherwise. If an exception is encountered, it is re-thrown.
+        /// Inserts a shipping confirmation into the database.
         /// </summary>
         /// <param name="shippingConfirmation">Shipping confirmation to be inserted</param>
-        /// <param name="connSting">Connection string to SQL Server instance</param>
-        public static void InsertShippingConfirmation(ShippingConfirmationModel shippingConfirmation, string connSting)
+        /// <param name="connectionString">Connection string to SQL Server instance</param>
+        /// <exception cref="Exception">All operations around this method are surrounded by a transaction which rollbacked if an exception is encountered, commited otherwise.</exception>
+        public static void InsertShippingConfirmation(ShippingConfirmationModel shippingConfirmation, string connectionString)
         {
-            using SqlConnection conn = new(connSting);
+            using SqlConnection conn = new(connectionString);
             using SqlTransaction transaction = conn.BeginTransaction();
 
             try
